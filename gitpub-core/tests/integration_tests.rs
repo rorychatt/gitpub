@@ -1,5 +1,9 @@
 use gitpub_core::{Database, Repository, User};
 
+mod helpers;
+use helpers::TestDatabase;
+use testcontainers::clients::Cli;
+
 #[test]
 fn test_repository_creation() {
     let repo = Repository::new("test-repo".to_string(), "test-owner".to_string());
@@ -41,13 +45,11 @@ fn test_multiple_users_have_unique_ids() {
 
 #[tokio::test]
 async fn test_database_connection() {
-    let db_url = std::env::var("DATABASE_URL")
-        .unwrap_or_else(|_| "postgresql://postgres:postgres@localhost/gitpub_test".to_string());
+    let docker = Cli::default();
+    let test_db = TestDatabase::new(&docker).await;
 
-    let result = Database::new(&db_url).await;
-
-    if let Ok(db) = result {
-        let query_result = sqlx::query("SELECT 1").fetch_one(db.pool()).await;
-        assert!(query_result.is_ok());
-    }
+    let query_result = sqlx::query("SELECT 1")
+        .fetch_one(test_db.db.pool())
+        .await;
+    assert!(query_result.is_ok());
 }

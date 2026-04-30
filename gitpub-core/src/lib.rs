@@ -227,11 +227,19 @@ mod tests {
 
     #[tokio::test]
     async fn test_database_migrations() {
-        // Requires a test database URL in environment
-        if let Ok(db_url) = std::env::var("DATABASE_URL") {
-            let db = Database::new(&db_url).await;
-            assert!(db.is_ok(), "Database migrations should run successfully");
-        }
+        use testcontainers::clients::Cli;
+        use testcontainers_modules::postgres::Postgres;
+
+        let docker = Cli::default();
+        let container = docker.run(Postgres::default());
+        let port = container.get_host_port_ipv4(5432);
+        let db_url = format!(
+            "postgresql://postgres:postgres@localhost:{}/postgres",
+            port
+        );
+
+        let db = Database::new(&db_url).await;
+        assert!(db.is_ok(), "Database migrations should run successfully");
     }
 
     #[tokio::test]
