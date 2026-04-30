@@ -233,10 +233,7 @@ mod tests {
         let docker = Cli::default();
         let container = docker.run(Postgres::default());
         let port = container.get_host_port_ipv4(5432);
-        let db_url = format!(
-            "postgresql://postgres:postgres@localhost:{}/postgres",
-            port
-        );
+        let db_url = format!("postgresql://postgres:postgres@localhost:{}/postgres", port);
 
         let db = Database::new(&db_url).await;
         assert!(db.is_ok(), "Database migrations should run successfully");

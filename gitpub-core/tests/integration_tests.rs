@@ -48,8 +48,6 @@ async fn test_database_connection() {
     let docker = Cli::default();
     let test_db = TestDatabase::new(&docker).await;
 
-    let query_result = sqlx::query("SELECT 1")
-        .fetch_one(test_db.db.pool())
-        .await;
+    let query_result = sqlx::query("SELECT 1").fetch_one(test_db.db.pool()).await;
     assert!(query_result.is_ok());
 }
