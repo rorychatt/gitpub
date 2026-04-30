@@ -87,10 +87,7 @@ pub enum AuthError {
     HashingError,
     JwtSecretMissing,
     JwtSecretTooShort,
-    InvalidVerificationToken,
-    VerificationTokenExpired,
-    EmailNotVerified,
-    Forbidden,
+    DatabaseError,
 }
 
 impl fmt::Display for AuthError {
@@ -106,15 +103,7 @@ impl fmt::Display for AuthError {
             AuthError::JwtSecretTooShort => {
                 write!(f, "JWT_SECRET must be at least 32 bytes")
             }
-            AuthError::InvalidVerificationToken => {
-                write!(f, "Invalid or expired verification token")
-            }
-            AuthError::VerificationTokenExpired => write!(f, "Verification token has expired"),
-            AuthError::EmailNotVerified => write!(
-                f,
-                "Email address not verified. Please check your email for verification link."
-            ),
-            AuthError::Forbidden => write!(f, "Forbidden"),
+            AuthError::DatabaseError => write!(f, "Database error"),
         }
     }
 }
@@ -141,10 +130,10 @@ impl IntoResponse for AuthError {
                 StatusCode::INTERNAL_SERVER_ERROR,
                 "Configuration error".to_string(),
             ),
-            AuthError::InvalidVerificationToken => (StatusCode::BAD_REQUEST, self.to_string()),
-            AuthError::VerificationTokenExpired => (StatusCode::BAD_REQUEST, self.to_string()),
-            AuthError::EmailNotVerified => (StatusCode::FORBIDDEN, self.to_string()),
-            AuthError::Forbidden => (StatusCode::FORBIDDEN, self.to_string()),
+            AuthError::DatabaseError => (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "Internal error".to_string(),
+            ),
         };
 
         (status, Json(serde_json::json!({ "error": message }))).into_response()
