@@ -74,15 +74,13 @@ impl Database {
 
     // User operations
     pub async fn insert_user(&self, user: &User) -> Result<()> {
-        sqlx::query(
-            "INSERT INTO users (id, username, email, created_at) VALUES ($1, $2, $3, $4)",
-        )
-        .bind(&user.id)
-        .bind(&user.username)
-        .bind(&user.email)
-        .bind(user.created_at)
-        .execute(&self.pool)
-        .await?;
+        sqlx::query("INSERT INTO users (id, username, email, created_at) VALUES ($1, $2, $3, $4)")
+            .bind(&user.id)
+            .bind(&user.username)
+            .bind(&user.email)
+            .bind(user.created_at)
+            .execute(&self.pool)
+            .await?;
         Ok(())
     }
 
@@ -279,10 +277,7 @@ mod tests {
         let db = Database::new(&database_url).await.unwrap();
 
         for i in 0..5 {
-            let user = User::new(
-                format!("user{}", i),
-                format!("user{}@example.com", i),
-            );
+            let user = User::new(format!("user{}", i), format!("user{}@example.com", i));
             db.insert_user(&user).await.unwrap();
         }
 
