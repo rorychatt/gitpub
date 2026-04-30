@@ -5,7 +5,11 @@ pub fn test_repository(name: &str, owner: &str) -> Repository {
 }
 
 pub fn test_user(username: &str, email: &str) -> User {
-    User::new(username.to_string(), email.to_string(), "test_hash".to_string())
+    User::new(
+        username.to_string(),
+        email.to_string(),
+        "test_hash".to_string(),
+    )
 }
 
 pub fn test_commit(sha: &str, message: &str, repository_id: &str) -> Commit {

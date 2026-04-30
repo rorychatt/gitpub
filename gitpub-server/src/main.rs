@@ -312,7 +312,10 @@ mod tests {
             .unwrap();
         let json: auth::RegisterResponse = serde_json::from_slice(&body).unwrap();
 
-        assert_eq!(json.message, "Registration successful. Please verify your email.");
+        assert_eq!(
+            json.message,
+            "Registration successful. Please verify your email."
+        );
     }
 
     #[tokio::test]
@@ -533,7 +536,12 @@ mod tests {
         // Get verification token
         let token = {
             let users = state.users.read().await;
-            users.get("testuser").unwrap().verification_token.clone().unwrap()
+            users
+                .get("testuser")
+                .unwrap()
+                .verification_token
+                .clone()
+                .unwrap()
         };
 
         // Verify email
@@ -661,7 +669,12 @@ mod tests {
 
         let token = {
             let users = state.users.read().await;
-            users.get("testuser").unwrap().verification_token.clone().unwrap()
+            users
+                .get("testuser")
+                .unwrap()
+                .verification_token
+                .clone()
+                .unwrap()
         };
 
         let verify_body = serde_json::json!({
@@ -720,7 +733,12 @@ mod tests {
 
         let old_token = {
             let users = state.users.read().await;
-            users.get("testuser").unwrap().verification_token.clone().unwrap()
+            users
+                .get("testuser")
+                .unwrap()
+                .verification_token
+                .clone()
+                .unwrap()
         };
 
         // Resend verification
@@ -735,11 +753,19 @@ mod tests {
         .await
         .unwrap();
 
-        assert_eq!(response.1.message, "Verification email resent. Please check your email.");
+        assert_eq!(
+            response.1.message,
+            "Verification email resent. Please check your email."
+        );
 
         let new_token = {
             let users = state.users.read().await;
-            users.get("testuser").unwrap().verification_token.clone().unwrap()
+            users
+                .get("testuser")
+                .unwrap()
+                .verification_token
+                .clone()
+                .unwrap()
         };
 
         assert_ne!(old_token, new_token);
@@ -773,7 +799,12 @@ mod tests {
 
         let token = {
             let users = state.users.read().await;
-            users.get("testuser").unwrap().verification_token.clone().unwrap()
+            users
+                .get("testuser")
+                .unwrap()
+                .verification_token
+                .clone()
+                .unwrap()
         };
 
         let verify_body = serde_json::json!({

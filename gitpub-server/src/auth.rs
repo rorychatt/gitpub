@@ -104,9 +104,14 @@ impl fmt::Display for AuthError {
             AuthError::JwtSecretTooShort => {
                 write!(f, "JWT_SECRET must be at least 32 bytes")
             }
-            AuthError::InvalidVerificationToken => write!(f, "Invalid or expired verification token"),
+            AuthError::InvalidVerificationToken => {
+                write!(f, "Invalid or expired verification token")
+            }
             AuthError::VerificationTokenExpired => write!(f, "Verification token has expired"),
-            AuthError::EmailNotVerified => write!(f, "Email address not verified. Please check your email for verification link."),
+            AuthError::EmailNotVerified => write!(
+                f,
+                "Email address not verified. Please check your email for verification link."
+            ),
         }
     }
 }
