@@ -1,4 +1,4 @@
-mod auth;
+pub mod auth;
 
 use axum::{
     extract::State,
@@ -6,14 +6,13 @@ use axum::{
     routing::{get, post},
     Json, Router,
 };
-use gitpub_core::User;
+use gitpub_core::{Database, User};
 use serde::Serialize;
-use std::{collections::HashMap, sync::Arc};
-use tokio::sync::RwLock;
+use std::sync::Arc;
 
 #[derive(Clone)]
 struct AppState {
-    users: Arc<RwLock<HashMap<String, User>>>,
+    db: Arc<Database>,
 }
 
 #[tokio::main]
@@ -22,8 +21,12 @@ async fn main() -> anyhow::Result<()> {
 
     auth::get_jwt_secret().expect("JWT_SECRET must be set and at least 32 bytes");
 
+    let database_url = std::env::var("DATABASE_URL")
+        .unwrap_or_else(|_| "postgresql://postgres:postgres@localhost/gitpub".to_string());
+    let db = Database::new(&database_url).await?;
+
     let state = Arc::new(AppState {
-        users: Arc::new(RwLock::new(HashMap::new())),
+        db: Arc::new(db),
     });
 
     let app = Router::new()
@@ -72,19 +75,27 @@ async fn register(
     State(state): State<Arc<AppState>>,
     Json(req): Json<auth::RegisterRequest>,
 ) -> Result<(StatusCode, Json<auth::LoginResponse>), auth::AuthError> {
-    let users = state.users.read().await;
-    if users.contains_key(&req.username) {
+    if let Ok(Some(_)) = state.db.get_user_by_username(&req.username).await {
         return Err(auth::AuthError::UserAlreadyExists);
     }
-    drop(users);
+
+    if let Ok(Some(_)) = state.db.get_user_by_email(&req.email).await {
+        return Err(auth::AuthError::UserAlreadyExists);
+    }
 
     let password_hash = auth::hash_password(&req.password)?;
     let user = User::new(req.username.clone(), req.email.clone(), password_hash);
 
-    let token = auth::generate_jwt(&user)?;
+    state.db.insert_user(&user).await.map_err(|e| {
+        tracing::error!("Failed to insert user: {}", e);
+        if e.to_string().contains("duplicate key") || e.to_string().contains("UNIQUE constraint") {
+            auth::AuthError::UserAlreadyExists
+        } else {
+            auth::AuthError::InternalError
+        }
+    })?;
 
-    let mut users = state.users.write().await;
-    users.insert(req.username.clone(), user.clone());
+    let token = auth::generate_jwt(&user)?;
 
     Ok((
         StatusCode::CREATED,
@@ -99,9 +110,9 @@ async fn login(
     State(state): State<Arc<AppState>>,
     Json(req): Json<auth::LoginRequest>,
 ) -> Result<Json<auth::LoginResponse>, auth::AuthError> {
-    let users = state.users.read().await;
-    let user = users
-        .get(&req.username)
+    let user = state.db.get_user_by_username(&req.username)
+        .await
+        .map_err(|_| auth::AuthError::InternalError)?
         .ok_or(auth::AuthError::InvalidCredentials)?;
 
     let is_valid = auth::verify_password(&req.password, &user.password_hash)?;
@@ -109,11 +120,11 @@ async fn login(
         return Err(auth::AuthError::InvalidCredentials);
     }
 
-    let token = auth::generate_jwt(user)?;
+    let token = auth::generate_jwt(&user)?;
 
     Ok(Json(auth::LoginResponse {
         token,
-        user: user.clone().into(),
+        user: user.into(),
     }))
 }
 
@@ -121,12 +132,12 @@ async fn get_current_user(
     State(state): State<Arc<AppState>>,
     auth: auth::RequireAuth,
 ) -> Result<Json<auth::UserInfo>, auth::AuthError> {
-    let users = state.users.read().await;
-    let user = users
-        .get(&auth.claims.username)
+    let user = state.db.get_user_by_username(&auth.claims.username)
+        .await
+        .map_err(|_| auth::AuthError::InternalError)?
         .ok_or(auth::AuthError::InvalidToken)?;
 
-    Ok(Json(user.clone().into()))
+    Ok(Json(user.into()))
 }
 
 #[cfg(test)]

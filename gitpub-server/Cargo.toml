@@ -25,3 +25,5 @@ rstest = { workspace = true }
 assert_matches = { workspace = true }
 axum-test = "15"
 tower = { version = "0.5.2", features = ["util"] }
+testcontainers = { workspace = true }
+sqlx = { workspace = true }

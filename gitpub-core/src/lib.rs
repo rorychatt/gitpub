@@ -57,7 +57,6 @@ pub struct Commit {
     pub message: String,
     pub author: String,
     pub timestamp: i64,
-    pub repository_id: String,
 }
 
 /// Database connection manager
@@ -78,10 +77,11 @@ impl Database {
 
     // User operations
     pub async fn insert_user(&self, user: &User) -> Result<()> {
-        sqlx::query("INSERT INTO users (id, username, email, created_at) VALUES ($1, $2, $3, $4)")
+        sqlx::query("INSERT INTO users (id, username, email, password_hash, created_at) VALUES ($1, $2, $3, $4, $5)")
             .bind(&user.id)
             .bind(&user.username)
             .bind(&user.email)
+            .bind(&user.password_hash)
             .bind(user.created_at)
             .execute(&self.pool)
             .await?;
@@ -90,7 +90,7 @@ impl Database {
 
     pub async fn get_user_by_id(&self, id: &str) -> Result<Option<User>> {
         let user = sqlx::query_as::<_, User>(
-            "SELECT id, username, email, created_at FROM users WHERE id = $1",
+            "SELECT id, username, email, password_hash, created_at FROM users WHERE id = $1",
         )
         .bind(id)
         .fetch_optional(&self.pool)
@@ -100,7 +100,7 @@ impl Database {
 
     pub async fn get_user_by_username(&self, username: &str) -> Result<Option<User>> {
         let user = sqlx::query_as::<_, User>(
-            "SELECT id, username, email, created_at FROM users WHERE username = $1",
+            "SELECT id, username, email, password_hash, created_at FROM users WHERE username = $1",
         )
         .bind(username)
         .fetch_optional(&self.pool)
@@ -110,7 +110,7 @@ impl Database {
 
     pub async fn get_user_by_email(&self, email: &str) -> Result<Option<User>> {
         let user = sqlx::query_as::<_, User>(
-            "SELECT id, username, email, created_at FROM users WHERE email = $1",
+            "SELECT id, username, email, password_hash, created_at FROM users WHERE email = $1",
         )
         .bind(email)
         .fetch_optional(&self.pool)
@@ -122,7 +122,7 @@ impl Database {
         let limit = limit.unwrap_or(100);
         let offset = offset.unwrap_or(0);
         let users = sqlx::query_as::<_, User>(
-            "SELECT id, username, email, created_at FROM users ORDER BY created_at DESC LIMIT $1 OFFSET $2",
+            "SELECT id, username, email, password_hash, created_at FROM users ORDER BY created_at DESC LIMIT $1 OFFSET $2",
         )
         .bind(limit)
         .bind(offset)
