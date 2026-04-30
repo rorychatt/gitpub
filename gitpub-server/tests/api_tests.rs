@@ -147,7 +147,10 @@ fn create_auth_test_app() -> Router {
 
 #[tokio::test]
 async fn test_register_weak_password_rejected() {
-    std::env::set_var("JWT_SECRET", "test_secret_key_that_is_at_least_32_bytes_long");
+    std::env::set_var(
+        "JWT_SECRET",
+        "test_secret_key_that_is_at_least_32_bytes_long",
+    );
 
     let server = TestServer::new(create_auth_test_app()).unwrap();
 
@@ -163,7 +166,10 @@ async fn test_register_weak_password_rejected() {
 
     response.assert_status(StatusCode::BAD_REQUEST);
     let json: serde_json::Value = response.json();
-    assert!(json["error"].as_str().unwrap().contains("at least 8 characters"));
+    assert!(json["error"]
+        .as_str()
+        .unwrap()
+        .contains("at least 8 characters"));
 
     // Test weak password
     let response = server

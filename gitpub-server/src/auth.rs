@@ -151,7 +151,10 @@ pub fn validate_password_strength(password: &str) -> Result<(), AuthError> {
     if score < 3 {
         let feedback = if let Some(feedback) = entropy.feedback() {
             if let Some(warning) = feedback.warning() {
-                format!("Password is too weak: {}. Please choose a stronger password.", warning)
+                format!(
+                    "Password is too weak: {}. Please choose a stronger password.",
+                    warning
+                )
             } else {
                 "Password is too weak. Please choose a stronger password with a mix of characters, numbers, and symbols.".to_string()
             }
