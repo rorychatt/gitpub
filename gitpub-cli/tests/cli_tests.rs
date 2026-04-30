@@ -1,6 +1,6 @@
 use clap::{Parser, Subcommand};
 
-#[derive(Parser)]
+#[derive(Parser, Debug)]
 #[command(name = "gitpub")]
 #[command(about = "A CLI for interacting with gitpub repositories", long_about = None)]
 struct Cli {
@@ -8,7 +8,7 @@ struct Cli {
     command: Commands,
 }
 
-#[derive(Subcommand)]
+#[derive(Subcommand, Debug)]
 enum Commands {
     Init {
         name: String,

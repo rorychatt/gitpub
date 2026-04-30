@@ -46,8 +46,7 @@ async fn test_database_connection() {
 
     let result = Database::new(&db_url).await;
 
-    if result.is_ok() {
-        let db = result.unwrap();
+    if let Ok(db) = result {
         let query_result = sqlx::query("SELECT 1").fetch_one(db.pool()).await;
         assert!(query_result.is_ok());
     }

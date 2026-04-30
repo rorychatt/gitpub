@@ -1,10 +1,8 @@
 use axum::{
-    body::Body,
-    http::{Request, StatusCode},
+    http::StatusCode,
     Router,
 };
 use axum_test::TestServer;
-use tower::ServiceExt;
 
 fn create_test_app() -> Router {
     use axum::{extract::State, routing::get, Json, Router};
@@ -92,5 +90,5 @@ async fn test_repositories_endpoint_content_type() {
 
     response.assert_status_ok();
     let content_type = response.header("content-type");
-    assert!(content_type.contains("application/json"));
+    assert!(content_type.to_str().unwrap().contains("application/json"));
 }
