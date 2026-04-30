@@ -120,4 +120,151 @@ mod tests {
         };
         assert_eq!(config.repository_name, "test-repo");
     }
+
+    #[tokio::test]
+    async fn test_deploy_success() {
+        use wiremock::{Mock, MockServer, ResponseTemplate};
+        use wiremock::matchers::{method, path};
+
+        let mock_server = MockServer::start().await;
+
+        Mock::given(method("POST"))
+            .and(path("/deployments"))
+            .respond_with(ResponseTemplate::new(201).set_body_json(serde_json::json!({
+                "deployment_id": "test-123",
+                "status": "Pending",
+                "url": null
+            })))
+            .mount(&mock_server)
+            .await;
+
+        let client = SliplaneClient::new(mock_server.uri())
+            .with_api_key("test-key".to_string());
+
+        let config = DeploymentConfig {
+            repository_name: "test-repo".to_string(),
+            branch: "main".to_string(),
+            environment: Environment::Development,
+            auto_scale: true,
+        };
+
+        let result = client.deploy(&config).await.unwrap();
+        assert_eq!(result.deployment_id, "test-123");
+        assert!(matches!(result.status, DeploymentStatus::Pending));
+    }
+
+    #[tokio::test]
+    async fn test_deploy_with_auth_header() {
+        use wiremock::{Mock, MockServer, ResponseTemplate};
+        use wiremock::matchers::{method, path, header};
+
+        let mock_server = MockServer::start().await;
+
+        Mock::given(method("POST"))
+            .and(path("/deployments"))
+            .and(header("Authorization", "Bearer test-key"))
+            .respond_with(ResponseTemplate::new(201).set_body_json(serde_json::json!({
+                "deployment_id": "test-456",
+                "status": "Pending",
+                "url": null
+            })))
+            .mount(&mock_server)
+            .await;
+
+        let client = SliplaneClient::new(mock_server.uri())
+            .with_api_key("test-key".to_string());
+
+        let config = DeploymentConfig {
+            repository_name: "test-repo".to_string(),
+            branch: "main".to_string(),
+            environment: Environment::Development,
+            auto_scale: true,
+        };
+
+        let result = client.deploy(&config).await;
+        assert!(result.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_get_deployment_status_running() {
+        use wiremock::{Mock, MockServer, ResponseTemplate};
+        use wiremock::matchers::{method, path};
+
+        let mock_server = MockServer::start().await;
+
+        Mock::given(method("GET"))
+            .and(path("/deployments/test-123/status"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!("Running")))
+            .mount(&mock_server)
+            .await;
+
+        let client = SliplaneClient::new(mock_server.uri())
+            .with_api_key("test-key".to_string());
+
+        let status = client.get_deployment_status("test-123").await.unwrap();
+        assert!(matches!(status, DeploymentStatus::Running));
+    }
+
+    #[tokio::test]
+    async fn test_get_deployment_status_failed() {
+        use wiremock::{Mock, MockServer, ResponseTemplate};
+        use wiremock::matchers::{method, path};
+
+        let mock_server = MockServer::start().await;
+
+        Mock::given(method("GET"))
+            .and(path("/deployments/test-456/status"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!("Failed")))
+            .mount(&mock_server)
+            .await;
+
+        let client = SliplaneClient::new(mock_server.uri())
+            .with_api_key("test-key".to_string());
+
+        let status = client.get_deployment_status("test-456").await.unwrap();
+        assert!(matches!(status, DeploymentStatus::Failed));
+    }
+
+    #[tokio::test]
+    async fn test_deploy_network_error() {
+        let client = SliplaneClient::new("http://localhost:1".to_string())
+            .with_api_key("test-key".to_string());
+
+        let config = DeploymentConfig {
+            repository_name: "test-repo".to_string(),
+            branch: "main".to_string(),
+            environment: Environment::Development,
+            auto_scale: true,
+        };
+
+        let result = client.deploy(&config).await;
+        assert!(result.is_err());
+    }
+
+    #[tokio::test]
+    async fn test_deploy_invalid_json_response() {
+        use wiremock::{Mock, MockServer, ResponseTemplate};
+        use wiremock::matchers::{method, path};
+
+        let mock_server = MockServer::start().await;
+
+        Mock::given(method("POST"))
+            .and(path("/deployments"))
+            .respond_with(ResponseTemplate::new(201).set_body_string("invalid json"))
+            .mount(&mock_server)
+            .await;
+
+        let client = SliplaneClient::new(mock_server.uri())
+            .with_api_key("test-key".to_string());
+
+        let config = DeploymentConfig {
+            repository_name: "test-repo".to_string(),
+            branch: "main".to_string(),
+            environment: Environment::Development,
+            auto_scale: true,
+        };
+
+        let result = client.deploy(&config).await;
+        assert!(result.is_err());
+    }
 }
