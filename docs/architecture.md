@@ -67,6 +67,30 @@ User → gitpub-cli → gitpub-server → gitpub-core → Database
 - **Serialization**: serde with JSON support
 - **Async Runtime**: Tokio
 
+## Configuration
+
+### Environment Variables
+
+gitpub-server requires the following environment variables:
+
+| Variable | Required | Description | Example |
+|----------|----------|-------------|---------|
+| `DATABASE_URL` | Yes | PostgreSQL connection string | `postgresql://localhost/gitpub` |
+| `JWT_SECRET` | Yes | Secret key for JWT token signing (minimum 32 bytes) | Generated via `openssl rand -base64 32` |
+
+### Security Recommendations
+
+**JWT_SECRET Management:**
+- Generate a cryptographically secure random secret for each environment
+- Recommended generation methods:
+  - Linux/macOS: `openssl rand -base64 32`
+  - Python: `python -c "import secrets; print(secrets.token_urlsafe(32))"`
+  - Node.js: `node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"`
+- Never commit `JWT_SECRET` to source control
+- Use different secrets for development, staging, and production environments
+- Store secrets in environment-specific configuration (e.g., `.env` files, secret managers)
+- Rotate secrets periodically as part of security maintenance
+
 ## Security
 
 - User authentication required for all operations
