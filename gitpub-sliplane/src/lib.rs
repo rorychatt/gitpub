@@ -123,8 +123,8 @@ mod tests {
 
     #[tokio::test]
     async fn test_deploy_success() {
-        use wiremock::{Mock, MockServer, ResponseTemplate};
         use wiremock::matchers::{method, path};
+        use wiremock::{Mock, MockServer, ResponseTemplate};
 
         let mock_server = MockServer::start().await;
 
@@ -138,8 +138,7 @@ mod tests {
             .mount(&mock_server)
             .await;
 
-        let client = SliplaneClient::new(mock_server.uri())
-            .with_api_key("test-key".to_string());
+        let client = SliplaneClient::new(mock_server.uri()).with_api_key("test-key".to_string());
 
         let config = DeploymentConfig {
             repository_name: "test-repo".to_string(),
@@ -155,8 +154,8 @@ mod tests {
 
     #[tokio::test]
     async fn test_deploy_with_auth_header() {
+        use wiremock::matchers::{header, method, path};
         use wiremock::{Mock, MockServer, ResponseTemplate};
-        use wiremock::matchers::{method, path, header};
 
         let mock_server = MockServer::start().await;
 
@@ -171,8 +170,7 @@ mod tests {
             .mount(&mock_server)
             .await;
 
-        let client = SliplaneClient::new(mock_server.uri())
-            .with_api_key("test-key".to_string());
+        let client = SliplaneClient::new(mock_server.uri()).with_api_key("test-key".to_string());
 
         let config = DeploymentConfig {
             repository_name: "test-repo".to_string(),
@@ -187,8 +185,8 @@ mod tests {
 
     #[tokio::test]
     async fn test_get_deployment_status_running() {
-        use wiremock::{Mock, MockServer, ResponseTemplate};
         use wiremock::matchers::{method, path};
+        use wiremock::{Mock, MockServer, ResponseTemplate};
 
         let mock_server = MockServer::start().await;
 
@@ -198,8 +196,7 @@ mod tests {
             .mount(&mock_server)
             .await;
 
-        let client = SliplaneClient::new(mock_server.uri())
-            .with_api_key("test-key".to_string());
+        let client = SliplaneClient::new(mock_server.uri()).with_api_key("test-key".to_string());
 
         let status = client.get_deployment_status("test-123").await.unwrap();
         assert!(matches!(status, DeploymentStatus::Running));
@@ -207,8 +204,8 @@ mod tests {
 
     #[tokio::test]
     async fn test_get_deployment_status_failed() {
-        use wiremock::{Mock, MockServer, ResponseTemplate};
         use wiremock::matchers::{method, path};
+        use wiremock::{Mock, MockServer, ResponseTemplate};
 
         let mock_server = MockServer::start().await;
 
@@ -218,8 +215,7 @@ mod tests {
             .mount(&mock_server)
             .await;
 
-        let client = SliplaneClient::new(mock_server.uri())
-            .with_api_key("test-key".to_string());
+        let client = SliplaneClient::new(mock_server.uri()).with_api_key("test-key".to_string());
 
         let status = client.get_deployment_status("test-456").await.unwrap();
         assert!(matches!(status, DeploymentStatus::Failed));
@@ -243,8 +239,8 @@ mod tests {
 
     #[tokio::test]
     async fn test_deploy_invalid_json_response() {
-        use wiremock::{Mock, MockServer, ResponseTemplate};
         use wiremock::matchers::{method, path};
+        use wiremock::{Mock, MockServer, ResponseTemplate};
 
         let mock_server = MockServer::start().await;
 
@@ -254,8 +250,7 @@ mod tests {
             .mount(&mock_server)
             .await;
 
-        let client = SliplaneClient::new(mock_server.uri())
-            .with_api_key("test-key".to_string());
+        let client = SliplaneClient::new(mock_server.uri()).with_api_key("test-key".to_string());
 
         let config = DeploymentConfig {
             repository_name: "test-repo".to_string(),
