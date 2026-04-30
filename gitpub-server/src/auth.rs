@@ -87,6 +87,11 @@ pub enum AuthError {
     HashingError,
     JwtSecretMissing,
     JwtSecretTooShort,
+    PasswordTooWeak(String),
+    InvalidVerificationToken,
+    VerificationTokenExpired,
+    EmailNotVerified,
+    Forbidden,
     DatabaseError,
 }
 
@@ -103,6 +108,16 @@ impl fmt::Display for AuthError {
             AuthError::JwtSecretTooShort => {
                 write!(f, "JWT_SECRET must be at least 32 bytes")
             }
+            AuthError::PasswordTooWeak(msg) => write!(f, "{}", msg),
+            AuthError::InvalidVerificationToken => {
+                write!(f, "Invalid or expired verification token")
+            }
+            AuthError::VerificationTokenExpired => write!(f, "Verification token has expired"),
+            AuthError::EmailNotVerified => write!(
+                f,
+                "Email address not verified. Please check your email for verification link."
+            ),
+            AuthError::Forbidden => write!(f, "Forbidden"),
             AuthError::DatabaseError => write!(f, "Database error"),
         }
     }
@@ -118,6 +133,7 @@ impl IntoResponse for AuthError {
             AuthError::InvalidToken => (StatusCode::UNAUTHORIZED, self.to_string()),
             AuthError::MissingToken => (StatusCode::UNAUTHORIZED, self.to_string()),
             AuthError::UserAlreadyExists => (StatusCode::CONFLICT, self.to_string()),
+            AuthError::PasswordTooWeak(_) => (StatusCode::BAD_REQUEST, self.to_string()),
             AuthError::HashingError => (
                 StatusCode::INTERNAL_SERVER_ERROR,
                 "Internal error".to_string(),
@@ -130,6 +146,10 @@ impl IntoResponse for AuthError {
                 StatusCode::INTERNAL_SERVER_ERROR,
                 "Configuration error".to_string(),
             ),
+            AuthError::InvalidVerificationToken => (StatusCode::BAD_REQUEST, self.to_string()),
+            AuthError::VerificationTokenExpired => (StatusCode::BAD_REQUEST, self.to_string()),
+            AuthError::EmailNotVerified => (StatusCode::UNAUTHORIZED, self.to_string()),
+            AuthError::Forbidden => (StatusCode::FORBIDDEN, self.to_string()),
             AuthError::DatabaseError => (
                 StatusCode::INTERNAL_SERVER_ERROR,
                 "Internal error".to_string(),
@@ -146,6 +166,44 @@ pub fn hash_password(password: &str) -> Result<String, AuthError> {
 
 pub fn verify_password(password: &str, hash: &str) -> Result<bool, AuthError> {
     bcrypt::verify(password, hash).map_err(|_| AuthError::HashingError)
+}
+
+pub fn validate_password_strength(password: &str) -> Result<(), AuthError> {
+    // Check minimum length
+    if password.len() < 8 {
+        return Err(AuthError::PasswordTooWeak(
+            "Password must be at least 8 characters long".to_string(),
+        ));
+    }
+
+    // Check password strength using zxcvbn
+    let entropy = zxcvbn::zxcvbn(password, &[]);
+    let score = match entropy.score() {
+        zxcvbn::Score::Zero => 0,
+        zxcvbn::Score::One => 1,
+        zxcvbn::Score::Two => 2,
+        zxcvbn::Score::Three => 3,
+        zxcvbn::Score::Four => 4,
+        _ => 0, // Default to weakest score for unknown values
+    };
+
+    if score < 3 {
+        let feedback = if let Some(feedback) = entropy.feedback() {
+            if let Some(warning) = feedback.warning() {
+                format!(
+                    "Password is too weak: {}. Please choose a stronger password.",
+                    warning
+                )
+            } else {
+                "Password is too weak. Please choose a stronger password with a mix of characters, numbers, and symbols.".to_string()
+            }
+        } else {
+            "Password is too weak. Please choose a stronger password.".to_string()
+        };
+        return Err(AuthError::PasswordTooWeak(feedback));
+    }
+
+    Ok(())
 }
 
 pub fn get_jwt_secret() -> Result<String, AuthError> {
@@ -441,5 +499,42 @@ mod tests {
             .unwrap();
         let decoded_str = String::from_utf8(decoded).unwrap();
         assert_eq!(decoded_str, credentials);
+    }
+
+    #[test]
+    fn test_validate_password_too_short() {
+        let result = validate_password_strength("short");
+        assert!(matches!(result, Err(AuthError::PasswordTooWeak(_))));
+        if let Err(AuthError::PasswordTooWeak(msg)) = result {
+            assert!(msg.contains("at least 8 characters"));
+        }
+    }
+
+    #[test]
+    fn test_validate_password_weak() {
+        // Test common weak passwords
+        let weak_passwords = vec!["password", "12345678", "qwerty12"];
+        for password in weak_passwords {
+            let result = validate_password_strength(password);
+            assert!(
+                matches!(result, Err(AuthError::PasswordTooWeak(_))),
+                "Password '{}' should be rejected as weak",
+                password
+            );
+        }
+    }
+
+    #[test]
+    fn test_validate_password_strong() {
+        // Test strong passwords
+        let strong_passwords = vec!["Tr0ub4dor&3", "correct-horse-battery-staple"];
+        for password in strong_passwords {
+            let result = validate_password_strength(password);
+            assert!(
+                result.is_ok(),
+                "Password '{}' should be accepted as strong",
+                password
+            );
+        }
     }
 }

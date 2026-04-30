@@ -1,4 +1,4 @@
-mod auth;
+pub mod auth;
 mod rate_limit;
 mod git_http;
 
@@ -95,6 +95,7 @@ async fn register(
         return Err(auth::AuthError::UserAlreadyExists);
     }
 
+    auth::validate_password_strength(&req.password)?;
     let password_hash = auth::hash_password(&req.password)?;
     let user = state
         .db
