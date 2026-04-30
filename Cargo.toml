@@ -18,3 +18,11 @@ git2 = "0.18"
 anyhow = "1"
 tracing = "0.1"
 tracing-subscriber = "0.3"
+
+# Test dependencies
+tokio-test = "0.4"
+mockall = "0.13"
+wiremock = "0.6"
+testcontainers = "0.23"
+assert_matches = "1.5"
+rstest = "0.23"
