@@ -12,18 +12,20 @@ serde_json = { workspace = true }
 anyhow = { workspace = true }
 tracing = { workspace = true }
 tracing-subscriber = { workspace = true }
+git2 = { workspace = true }
 jsonwebtoken = "9.3.0"
 bcrypt = "0.15.1"
 tower-http = { version = "0.6.1", features = ["cors"] }
 axum-extra = { version = "0.9.4", features = ["typed-header"] }
 chrono = { workspace = true }
-git2 = { workspace = true }
 uuid = { workspace = true }
 
 [dev-dependencies]
 tokio-test = { workspace = true }
+tower = { workspace = true }
+http-body-util = { workspace = true }
+tempfile = { workspace = true }
 mockall = { workspace = true }
 rstest = { workspace = true }
 assert_matches = { workspace = true }
 axum-test = "15"
-tower = { version = "0.5.2", features = ["util"] }
