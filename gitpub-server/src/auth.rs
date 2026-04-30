@@ -71,6 +71,7 @@ pub enum AuthError {
     HashingError,
     JwtSecretMissing,
     JwtSecretTooShort,
+    RateLimitExceeded,
 }
 
 impl fmt::Display for AuthError {
@@ -85,6 +86,9 @@ impl fmt::Display for AuthError {
             AuthError::JwtSecretMissing => write!(f, "JWT_SECRET environment variable not set"),
             AuthError::JwtSecretTooShort => {
                 write!(f, "JWT_SECRET must be at least 32 bytes")
+            }
+            AuthError::RateLimitExceeded => {
+                write!(f, "Too many requests. Please try again later.")
             }
         }
     }
@@ -112,6 +116,7 @@ impl IntoResponse for AuthError {
                 StatusCode::INTERNAL_SERVER_ERROR,
                 "Configuration error".to_string(),
             ),
+            AuthError::RateLimitExceeded => (StatusCode::TOO_MANY_REQUESTS, self.to_string()),
         };
 
         (status, Json(serde_json::json!({ "error": message }))).into_response()

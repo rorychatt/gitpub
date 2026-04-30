@@ -1,4 +1,5 @@
 mod auth;
+mod rate_limit;
 
 use axum::{
     extract::State,
@@ -14,6 +15,8 @@ use tokio::sync::RwLock;
 #[derive(Clone)]
 struct AppState {
     users: Arc<RwLock<HashMap<String, User>>>,
+    login_limiter: rate_limit::AuthRateLimiter,
+    register_limiter: rate_limit::AuthRateLimiter,
 }
 
 #[tokio::main]
@@ -24,6 +27,8 @@ async fn main() -> anyhow::Result<()> {
 
     let state = Arc::new(AppState {
         users: Arc::new(RwLock::new(HashMap::new())),
+        login_limiter: rate_limit::create_login_limiter(),
+        register_limiter: rate_limit::create_register_limiter(),
     });
 
     let app = Router::new()
@@ -72,6 +77,11 @@ async fn register(
     State(state): State<Arc<AppState>>,
     Json(req): Json<auth::RegisterRequest>,
 ) -> Result<(StatusCode, Json<auth::LoginResponse>), auth::AuthError> {
+    if state.register_limiter.check().is_err() {
+        tracing::warn!("Rate limit exceeded for register endpoint");
+        return Err(auth::AuthError::RateLimitExceeded);
+    }
+
     let users = state.users.read().await;
     if users.contains_key(&req.username) {
         return Err(auth::AuthError::UserAlreadyExists);
@@ -99,6 +109,11 @@ async fn login(
     State(state): State<Arc<AppState>>,
     Json(req): Json<auth::LoginRequest>,
 ) -> Result<Json<auth::LoginResponse>, auth::AuthError> {
+    if state.login_limiter.check().is_err() {
+        tracing::warn!("Rate limit exceeded for login endpoint");
+        return Err(auth::AuthError::RateLimitExceeded);
+    }
+
     let users = state.users.read().await;
     let user = users
         .get(&req.username)
@@ -144,6 +159,8 @@ mod tests {
 
         let state = Arc::new(AppState {
             users: Arc::new(RwLock::new(HashMap::new())),
+            login_limiter: rate_limit::create_login_limiter(),
+            register_limiter: rate_limit::create_register_limiter(),
         });
 
         Router::new()
@@ -366,5 +383,110 @@ mod tests {
             .unwrap();
 
         assert_eq!(response.status(), StatusCode::UNAUTHORIZED);
+    }
+
+    #[tokio::test]
+    async fn test_login_rate_limit_blocks_excessive_requests() {
+        let app = create_test_app();
+
+        let register_body = serde_json::json!({
+            "username": "testuser",
+            "email": "test@example.com",
+            "password": "password123"
+        });
+
+        app.clone()
+            .oneshot(
+                Request::builder()
+                    .method("POST")
+                    .uri("/api/auth/register")
+                    .header("content-type", "application/json")
+                    .body(Body::from(serde_json::to_string(&register_body).unwrap()))
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+
+        for i in 0..11 {
+            let login_body = serde_json::json!({
+                "username": "testuser",
+                "password": "wrongpassword"
+            });
+
+            let response = app
+                .clone()
+                .oneshot(
+                    Request::builder()
+                        .method("POST")
+                        .uri("/api/auth/login")
+                        .header("content-type", "application/json")
+                        .body(Body::from(serde_json::to_string(&login_body).unwrap()))
+                        .unwrap(),
+                )
+                .await
+                .unwrap();
+
+            if i < 10 {
+                assert_eq!(
+                    response.status(),
+                    StatusCode::UNAUTHORIZED,
+                    "Request {} should be rate limited but got {:?}",
+                    i,
+                    response.status()
+                );
+            } else {
+                assert_eq!(
+                    response.status(),
+                    StatusCode::TOO_MANY_REQUESTS,
+                    "Request {} should return 429 but got {:?}",
+                    i,
+                    response.status()
+                );
+            }
+        }
+    }
+
+    #[tokio::test]
+    async fn test_register_rate_limit_blocks_excessive_requests() {
+        let app = create_test_app();
+
+        for i in 0..6 {
+            let register_body = serde_json::json!({
+                "username": format!("user{}", i),
+                "email": format!("user{}@example.com", i),
+                "password": "password123"
+            });
+
+            let response = app
+                .clone()
+                .oneshot(
+                    Request::builder()
+                        .method("POST")
+                        .uri("/api/auth/register")
+                        .header("content-type", "application/json")
+                        .body(Body::from(serde_json::to_string(&register_body).unwrap()))
+                        .unwrap(),
+                )
+                .await
+                .unwrap();
+
+            if i < 5 {
+                assert_eq!(
+                    response.status(),
+                    StatusCode::CREATED,
+                    "Request {} should succeed but got {:?}",
+                    i,
+                    response.status()
+                );
+            } else {
+                assert_eq!(
+                    response.status(),
+                    StatusCode::TOO_MANY_REQUESTS,
+                    "Request {} should return 429 but got {:?}",
+                    i,
+                    response.status()
+                );
+            }
+        }
     }
 }
