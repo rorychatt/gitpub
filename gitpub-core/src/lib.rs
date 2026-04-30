@@ -2,7 +2,7 @@ use anyhow::Result;
 use serde::{Deserialize, Serialize};
 
 /// Core repository representation
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Repository {
     pub id: String,
     pub name: String,
@@ -28,7 +28,7 @@ impl Repository {
 }
 
 /// User representation
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct User {
     pub id: String,
     pub username: String,
@@ -48,7 +48,7 @@ impl User {
 }
 
 /// Commit metadata
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Commit {
     pub sha: String,
     pub message: String,

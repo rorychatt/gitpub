@@ -38,7 +38,7 @@ impl SliplaneClient {
 }
 
 /// Deployment configuration
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct DeploymentConfig {
     pub repository_name: String,
     pub branch: String,
@@ -46,7 +46,7 @@ pub struct DeploymentConfig {
     pub auto_scale: bool,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum Environment {
     Development,
     Staging,
@@ -54,14 +54,14 @@ pub enum Environment {
 }
 
 /// Deployment result
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct DeploymentResult {
     pub deployment_id: String,
     pub status: DeploymentStatus,
     pub url: Option<String>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum DeploymentStatus {
     Pending,
     Building,

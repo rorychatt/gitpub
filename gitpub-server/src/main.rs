@@ -1,20 +1,12 @@
-use axum::{extract::State, routing::get, Json, Router};
-use serde::Serialize;
+use gitpub_server::{create_app, AppState};
 use std::sync::Arc;
-
-#[derive(Clone)]
-struct AppState {}
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     tracing_subscriber::fmt::init();
 
-    let state = Arc::new(AppState {});
-
-    let app = Router::new()
-        .route("/health", get(health_check))
-        .route("/api/repositories", get(list_repositories))
-        .with_state(state);
+    let state = Arc::new(AppState::new());
+    let app = create_app(state);
 
     let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await?;
     tracing::info!("Server listening on {}", listener.local_addr()?);
@@ -24,31 +16,9 @@ async fn main() -> anyhow::Result<()> {
     Ok(())
 }
 
-async fn health_check() -> &'static str {
-    "OK"
-}
-
-#[derive(Serialize)]
-struct RepositoryListResponse {
-    repositories: Vec<RepositoryInfo>,
-}
-
-#[derive(Serialize)]
-struct RepositoryInfo {
-    name: String,
-    owner: String,
-    description: Option<String>,
-}
-
-async fn list_repositories(State(_state): State<Arc<AppState>>) -> Json<RepositoryListResponse> {
-    Json(RepositoryListResponse {
-        repositories: vec![],
-    })
-}
-
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use gitpub_server::health_check;
 
     #[tokio::test]
     async fn test_health_check() {
