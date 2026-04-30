@@ -66,7 +66,7 @@ impl Database {
         let pool = sqlx::PgPool::connect(database_url).await?;
 
         // Run migrations
-        sqlx::migrate!("./migrations")
+        sqlx::migrate!("../migrations")
             .run(&pool)
             .await?;
 
