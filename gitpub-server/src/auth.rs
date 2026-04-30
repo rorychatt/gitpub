@@ -77,6 +77,7 @@ pub struct ResendVerificationRequest {
 }
 
 #[derive(Debug)]
+#[allow(dead_code)]
 pub enum AuthError {
     InvalidCredentials,
     TokenExpired,
@@ -89,6 +90,7 @@ pub enum AuthError {
     InvalidVerificationToken,
     VerificationTokenExpired,
     EmailNotVerified,
+    Forbidden,
 }
 
 impl fmt::Display for AuthError {
@@ -112,6 +114,7 @@ impl fmt::Display for AuthError {
                 f,
                 "Email address not verified. Please check your email for verification link."
             ),
+            AuthError::Forbidden => write!(f, "Forbidden"),
         }
     }
 }
@@ -141,6 +144,7 @@ impl IntoResponse for AuthError {
             AuthError::InvalidVerificationToken => (StatusCode::BAD_REQUEST, self.to_string()),
             AuthError::VerificationTokenExpired => (StatusCode::BAD_REQUEST, self.to_string()),
             AuthError::EmailNotVerified => (StatusCode::FORBIDDEN, self.to_string()),
+            AuthError::Forbidden => (StatusCode::FORBIDDEN, self.to_string()),
         };
 
         (status, Json(serde_json::json!({ "error": message }))).into_response()
@@ -227,6 +231,111 @@ where
     }
 }
 
+pub struct RequireGitAuth {
+    pub username: String,
+}
+
+use std::sync::Arc;
+
+#[async_trait]
+impl FromRequestParts<Arc<crate::AppState>> for RequireGitAuth {
+    type Rejection = Response;
+
+    async fn from_request_parts(
+        parts: &mut Parts,
+        state: &Arc<crate::AppState>,
+    ) -> Result<Self, Self::Rejection> {
+        use axum::http::header::AUTHORIZATION;
+
+        let auth_header = parts
+            .headers
+            .get(AUTHORIZATION)
+            .and_then(|h| h.to_str().ok())
+            .ok_or_else(|| {
+                (
+                    StatusCode::UNAUTHORIZED,
+                    [(
+                        axum::http::header::WWW_AUTHENTICATE,
+                        "Basic realm=\"gitpub\"",
+                    )],
+                    "Authorization required",
+                )
+                    .into_response()
+            })?;
+
+        if let Some(basic_credentials) = auth_header.strip_prefix("Basic ") {
+            use base64::Engine;
+            let decoded = base64::engine::general_purpose::STANDARD
+                .decode(basic_credentials)
+                .map_err(|_| {
+                    (StatusCode::UNAUTHORIZED, "Invalid authorization header").into_response()
+                })?;
+
+            let credentials_str = String::from_utf8(decoded).map_err(|_| {
+                (StatusCode::UNAUTHORIZED, "Invalid authorization header").into_response()
+            })?;
+
+            let mut parts_iter = credentials_str.splitn(2, ':');
+            let username = parts_iter.next().ok_or_else(|| {
+                (StatusCode::UNAUTHORIZED, "Invalid authorization header").into_response()
+            })?;
+            let password = parts_iter.next().ok_or_else(|| {
+                (StatusCode::UNAUTHORIZED, "Invalid authorization header").into_response()
+            })?;
+
+            let users = state.users.read().await;
+            let user = users.get(username).ok_or_else(|| {
+                (
+                    StatusCode::UNAUTHORIZED,
+                    [(
+                        axum::http::header::WWW_AUTHENTICATE,
+                        "Basic realm=\"gitpub\"",
+                    )],
+                    "Invalid credentials",
+                )
+                    .into_response()
+            })?;
+
+            let is_valid = verify_password(password, &user.password_hash).map_err(|_| {
+                (StatusCode::INTERNAL_SERVER_ERROR, "Authentication error").into_response()
+            })?;
+
+            if !is_valid {
+                return Err((
+                    StatusCode::UNAUTHORIZED,
+                    [(
+                        axum::http::header::WWW_AUTHENTICATE,
+                        "Basic realm=\"gitpub\"",
+                    )],
+                    "Invalid credentials",
+                )
+                    .into_response());
+            }
+
+            return Ok(RequireGitAuth {
+                username: username.to_string(),
+            });
+        }
+
+        if let Some(token) = auth_header.strip_prefix("Bearer ") {
+            let claims = validate_jwt(token).map_err(|e| e.into_response())?;
+            return Ok(RequireGitAuth {
+                username: claims.username,
+            });
+        }
+
+        Err((
+            StatusCode::UNAUTHORIZED,
+            [(
+                axum::http::header::WWW_AUTHENTICATE,
+                "Basic realm=\"gitpub\"",
+            )],
+            "Invalid authorization header",
+        )
+            .into_response())
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -307,6 +416,9 @@ mod tests {
 
     #[test]
     fn test_jwt_secret_validation() {
+        // Save original value to restore after test
+        let original = std::env::var(JWT_SECRET_ENV).ok();
+
         std::env::remove_var(JWT_SECRET_ENV);
         assert!(matches!(get_jwt_secret(), Err(AuthError::JwtSecretMissing)));
 
@@ -321,5 +433,24 @@ mod tests {
             "this_is_a_valid_secret_that_is_at_least_32_bytes",
         );
         assert!(get_jwt_secret().is_ok());
+
+        // Restore original value
+        if let Some(val) = original {
+            std::env::set_var(JWT_SECRET_ENV, val);
+        }
+    }
+
+    #[test]
+    fn test_basic_auth_parsing() {
+        use base64::Engine;
+        let credentials = "user:pass";
+        let encoded = base64::engine::general_purpose::STANDARD.encode(credentials);
+        assert_eq!(encoded, "dXNlcjpwYXNz");
+
+        let decoded = base64::engine::general_purpose::STANDARD
+            .decode(&encoded)
+            .unwrap();
+        let decoded_str = String::from_utf8(decoded).unwrap();
+        assert_eq!(decoded_str, credentials);
     }
 }

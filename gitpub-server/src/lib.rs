@@ -1,3 +1,6 @@
+pub mod auth;
+pub mod rate_limit;
+
 use axum::{extract::State, routing::get, Json, Router};
 use serde::Serialize;
 use std::sync::Arc;

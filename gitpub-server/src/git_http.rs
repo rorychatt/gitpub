@@ -95,8 +95,17 @@ pub async fn handle_upload_pack(
 pub async fn handle_receive_pack(
     State(state): State<Arc<AppState>>,
     Path((owner, repo)): Path<(String, String)>,
+    auth: crate::auth::RequireGitAuth,
     body: Bytes,
 ) -> Response {
+    if auth.username != owner {
+        return (
+            StatusCode::FORBIDDEN,
+            "You don't have permission to push to this repository",
+        )
+            .into_response();
+    }
+
     service_rpc(&state, &owner, &repo, "receive-pack", &body).await
 }
 
@@ -189,6 +198,8 @@ mod tests {
     }
 
     fn test_app(repos_path: PathBuf) -> Router {
+        use std::collections::HashMap;
+        use tokio::sync::RwLock;
         let state = Arc::new(AppState {
             users: Arc::new(RwLock::new(HashMap::new())),
             repos_path,
@@ -302,7 +313,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_receive_pack_request() {
+    async fn test_receive_pack_requires_auth() {
         let tmp = tempfile::tempdir().unwrap();
         let repos_path = create_test_repo(tmp.path());
         let app = test_app(repos_path);
@@ -319,22 +330,14 @@ mod tests {
             .await
             .unwrap();
 
-        let status = resp.status();
-        assert!(
-            status == StatusCode::OK || status == StatusCode::INTERNAL_SERVER_ERROR,
-            "Expected 200 or 500, got {}",
-            status
-        );
-        if status == StatusCode::OK {
-            assert_eq!(
-                resp.headers()
-                    .get("content-type")
-                    .unwrap()
-                    .to_str()
-                    .unwrap(),
-                "application/x-git-receive-pack-result"
-            );
-        }
+        assert_eq!(resp.status(), StatusCode::UNAUTHORIZED);
+        assert!(resp
+            .headers()
+            .get("www-authenticate")
+            .unwrap()
+            .to_str()
+            .unwrap()
+            .contains("Basic realm=\"gitpub\""));
     }
 
     #[tokio::test]
@@ -372,5 +375,238 @@ mod tests {
             .unwrap();
 
         assert_eq!(resp.status(), StatusCode::BAD_REQUEST);
+    }
+
+    #[tokio::test]
+    async fn test_receive_pack_rejects_invalid_credentials() {
+        use gitpub_core::User;
+        use std::collections::HashMap;
+        use tokio::sync::RwLock;
+
+        std::env::set_var(
+            "JWT_SECRET",
+            "test_secret_key_that_is_at_least_32_bytes_long",
+        );
+
+        let tmp = tempfile::tempdir().unwrap();
+        let repos_path = create_test_repo(tmp.path());
+
+        let password_hash = crate::auth::hash_password("correct_password").unwrap();
+        let user = User::new(
+            "testowner".to_string(),
+            "test@example.com".to_string(),
+            password_hash,
+        );
+
+        let mut users = HashMap::new();
+        users.insert("testowner".to_string(), user);
+
+        let state = Arc::new(AppState {
+            users: Arc::new(RwLock::new(users)),
+            repos_path,
+        });
+
+        let app = Router::new()
+            .route("/:owner/:repo/git-receive-pack", post(handle_receive_pack))
+            .with_state(state);
+
+        use base64::Engine;
+        let wrong_creds =
+            base64::engine::general_purpose::STANDARD.encode("testowner:wrong_password");
+
+        let resp = app
+            .oneshot(
+                axum::http::Request::builder()
+                    .method("POST")
+                    .uri("/testowner/testrepo.git/git-receive-pack")
+                    .header("Authorization", format!("Basic {}", wrong_creds))
+                    .body(Body::from("0000"))
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+
+        assert_eq!(resp.status(), StatusCode::UNAUTHORIZED);
+    }
+
+    #[tokio::test]
+    async fn test_receive_pack_accepts_valid_basic_auth() {
+        use gitpub_core::User;
+        use std::collections::HashMap;
+        use tokio::sync::RwLock;
+
+        std::env::set_var(
+            "JWT_SECRET",
+            "test_secret_key_that_is_at_least_32_bytes_long",
+        );
+
+        let tmp = tempfile::tempdir().unwrap();
+        let repos_path = create_test_repo(tmp.path());
+
+        let password_hash = crate::auth::hash_password("correct_password").unwrap();
+        let user = User::new(
+            "testowner".to_string(),
+            "test@example.com".to_string(),
+            password_hash,
+        );
+
+        let mut users = HashMap::new();
+        users.insert("testowner".to_string(), user);
+
+        let state = Arc::new(AppState {
+            users: Arc::new(RwLock::new(users)),
+            repos_path,
+        });
+
+        let app = Router::new()
+            .route("/:owner/:repo/git-receive-pack", post(handle_receive_pack))
+            .with_state(state);
+
+        use base64::Engine;
+        let creds = base64::engine::general_purpose::STANDARD.encode("testowner:correct_password");
+
+        let resp = app
+            .oneshot(
+                axum::http::Request::builder()
+                    .method("POST")
+                    .uri("/testowner/testrepo.git/git-receive-pack")
+                    .header("Authorization", format!("Basic {}", creds))
+                    .body(Body::from("0000"))
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+
+        let status = resp.status();
+        assert!(
+            status == StatusCode::OK || status == StatusCode::INTERNAL_SERVER_ERROR,
+            "Expected 200 or 500, got {}",
+            status
+        );
+    }
+
+    #[tokio::test]
+    async fn test_receive_pack_accepts_valid_bearer_token() {
+        use gitpub_core::User;
+        use std::collections::HashMap;
+        use tokio::sync::RwLock;
+
+        std::env::set_var(
+            "JWT_SECRET",
+            "test_secret_key_that_is_at_least_32_bytes_long",
+        );
+
+        let tmp = tempfile::tempdir().unwrap();
+        let repos_path = create_test_repo(tmp.path());
+
+        let password_hash = crate::auth::hash_password("password").unwrap();
+        let user = User::new(
+            "testowner".to_string(),
+            "test@example.com".to_string(),
+            password_hash,
+        );
+
+        let token = crate::auth::generate_jwt(&user).unwrap();
+
+        let mut users = HashMap::new();
+        users.insert("testowner".to_string(), user);
+
+        let state = Arc::new(AppState {
+            users: Arc::new(RwLock::new(users)),
+            repos_path,
+        });
+
+        let app = Router::new()
+            .route("/:owner/:repo/git-receive-pack", post(handle_receive_pack))
+            .with_state(state);
+
+        let resp = app
+            .oneshot(
+                axum::http::Request::builder()
+                    .method("POST")
+                    .uri("/testowner/testrepo.git/git-receive-pack")
+                    .header("Authorization", format!("Bearer {}", token))
+                    .body(Body::from("0000"))
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+
+        let status = resp.status();
+        assert!(
+            status == StatusCode::OK || status == StatusCode::INTERNAL_SERVER_ERROR,
+            "Expected 200 or 500, got {}",
+            status
+        );
+    }
+
+    #[tokio::test]
+    async fn test_receive_pack_enforces_ownership() {
+        use gitpub_core::User;
+        use std::collections::HashMap;
+        use tokio::sync::RwLock;
+
+        std::env::set_var(
+            "JWT_SECRET",
+            "test_secret_key_that_is_at_least_32_bytes_long",
+        );
+
+        let tmp = tempfile::tempdir().unwrap();
+        let repos_path = create_test_repo(tmp.path());
+
+        let password_hash = crate::auth::hash_password("password").unwrap();
+        let user = User::new(
+            "otheruser".to_string(),
+            "other@example.com".to_string(),
+            password_hash,
+        );
+
+        let mut users = HashMap::new();
+        users.insert("otheruser".to_string(), user);
+
+        let state = Arc::new(AppState {
+            users: Arc::new(RwLock::new(users)),
+            repos_path,
+        });
+
+        let app = Router::new()
+            .route("/:owner/:repo/git-receive-pack", post(handle_receive_pack))
+            .with_state(state);
+
+        use base64::Engine;
+        let creds = base64::engine::general_purpose::STANDARD.encode("otheruser:password");
+
+        let resp = app
+            .oneshot(
+                axum::http::Request::builder()
+                    .method("POST")
+                    .uri("/testowner/testrepo.git/git-receive-pack")
+                    .header("Authorization", format!("Basic {}", creds))
+                    .body(Body::from("0000"))
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+
+        assert_eq!(resp.status(), StatusCode::FORBIDDEN);
+    }
+
+    #[tokio::test]
+    async fn test_info_refs_receive_pack_unauthenticated() {
+        let tmp = tempfile::tempdir().unwrap();
+        let repos_path = create_test_repo(tmp.path());
+        let app = test_app(repos_path);
+
+        let resp = app
+            .oneshot(
+                axum::http::Request::builder()
+                    .uri("/testowner/testrepo.git/info/refs?service=git-receive-pack")
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+
+        assert_eq!(resp.status(), StatusCode::OK);
     }
 }
