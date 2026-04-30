@@ -1,10 +1,13 @@
 use axum::{
     async_trait,
-    extract::{FromRequestParts, TypedHeader},
-    headers::{authorization::Bearer, Authorization},
+    extract::FromRequestParts,
     http::{request::Parts, StatusCode},
     response::{IntoResponse, Response},
     Json, RequestPartsExt,
+};
+use axum_extra::{
+    headers::{authorization::Bearer, Authorization},
+    TypedHeader,
 };
 use gitpub_core::User;
 use jsonwebtoken::{decode, encode, DecodingKey, EncodingKey, Header, Validation};
@@ -28,13 +31,13 @@ pub struct LoginRequest {
     pub password: String,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct LoginResponse {
     pub token: String,
     pub user: UserInfo,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct UserInfo {
     pub id: String,
     pub username: String,
@@ -97,9 +100,9 @@ impl IntoResponse for AuthError {
             AuthError::InvalidToken => (StatusCode::UNAUTHORIZED, self.to_string()),
             AuthError::MissingToken => (StatusCode::UNAUTHORIZED, self.to_string()),
             AuthError::UserAlreadyExists => (StatusCode::CONFLICT, self.to_string()),
-            AuthError::HashingError => (StatusCode::INTERNAL_SERVER_ERROR, "Internal error"),
-            AuthError::JwtSecretMissing => (StatusCode::INTERNAL_SERVER_ERROR, "Configuration error"),
-            AuthError::JwtSecretTooShort => (StatusCode::INTERNAL_SERVER_ERROR, "Configuration error"),
+            AuthError::HashingError => (StatusCode::INTERNAL_SERVER_ERROR, "Internal error".to_string()),
+            AuthError::JwtSecretMissing => (StatusCode::INTERNAL_SERVER_ERROR, "Configuration error".to_string()),
+            AuthError::JwtSecretTooShort => (StatusCode::INTERNAL_SERVER_ERROR, "Configuration error".to_string()),
         };
 
         (status, Json(serde_json::json!({ "error": message }))).into_response()
