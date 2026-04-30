@@ -70,7 +70,7 @@ pub struct RefreshRequest {
     pub refresh_token: String,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct RefreshResponse {
     pub access_token: String,
     pub token_type: String,
