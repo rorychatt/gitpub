@@ -15,7 +15,8 @@ use serde::{Deserialize, Serialize};
 use std::fmt;
 
 const JWT_SECRET_ENV: &str = "JWT_SECRET";
-const TOKEN_EXPIRATION_HOURS: i64 = 24;
+pub const ACCESS_TOKEN_EXPIRATION_MINUTES: i64 = 15;
+pub const REFRESH_TOKEN_EXPIRATION_DAYS: i64 = 30;
 const BCRYPT_COST: u32 = 12;
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -33,7 +34,10 @@ pub struct LoginRequest {
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct LoginResponse {
-    pub token: String,
+    pub access_token: String,
+    pub refresh_token: String,
+    pub token_type: String,
+    pub expires_in: i64,
     pub user: UserInfo,
 }
 
@@ -61,6 +65,18 @@ pub struct RegisterRequest {
     pub password: String,
 }
 
+#[derive(Debug, Deserialize)]
+pub struct RefreshRequest {
+    pub refresh_token: String,
+}
+
+#[derive(Debug, Serialize)]
+pub struct RefreshResponse {
+    pub access_token: String,
+    pub token_type: String,
+    pub expires_in: i64,
+}
+
 #[derive(Debug)]
 pub enum AuthError {
     InvalidCredentials,
@@ -71,6 +87,10 @@ pub enum AuthError {
     HashingError,
     JwtSecretMissing,
     JwtSecretTooShort,
+    InvalidRefreshToken,
+    RefreshTokenExpired,
+    RefreshTokenRevoked,
+    DatabaseError,
 }
 
 impl fmt::Display for AuthError {
@@ -86,6 +106,10 @@ impl fmt::Display for AuthError {
             AuthError::JwtSecretTooShort => {
                 write!(f, "JWT_SECRET must be at least 32 bytes")
             }
+            AuthError::InvalidRefreshToken => write!(f, "Invalid refresh token"),
+            AuthError::RefreshTokenExpired => write!(f, "Refresh token expired"),
+            AuthError::RefreshTokenRevoked => write!(f, "Refresh token revoked"),
+            AuthError::DatabaseError => write!(f, "Database error"),
         }
     }
 }
@@ -99,6 +123,9 @@ impl IntoResponse for AuthError {
             AuthError::TokenExpired => (StatusCode::UNAUTHORIZED, self.to_string()),
             AuthError::InvalidToken => (StatusCode::UNAUTHORIZED, self.to_string()),
             AuthError::MissingToken => (StatusCode::UNAUTHORIZED, self.to_string()),
+            AuthError::InvalidRefreshToken => (StatusCode::UNAUTHORIZED, self.to_string()),
+            AuthError::RefreshTokenExpired => (StatusCode::UNAUTHORIZED, self.to_string()),
+            AuthError::RefreshTokenRevoked => (StatusCode::UNAUTHORIZED, self.to_string()),
             AuthError::UserAlreadyExists => (StatusCode::CONFLICT, self.to_string()),
             AuthError::HashingError => (
                 StatusCode::INTERNAL_SERVER_ERROR,
@@ -111,6 +138,10 @@ impl IntoResponse for AuthError {
             AuthError::JwtSecretTooShort => (
                 StatusCode::INTERNAL_SERVER_ERROR,
                 "Configuration error".to_string(),
+            ),
+            AuthError::DatabaseError => (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "Internal error".to_string(),
             ),
         };
 
@@ -139,7 +170,7 @@ pub fn get_jwt_secret() -> Result<String, AuthError> {
 pub fn generate_jwt(user: &User) -> Result<String, AuthError> {
     let secret = get_jwt_secret()?;
     let expiration = chrono::Utc::now()
-        .checked_add_signed(chrono::Duration::hours(TOKEN_EXPIRATION_HOURS))
+        .checked_add_signed(chrono::Duration::minutes(ACCESS_TOKEN_EXPIRATION_MINUTES))
         .expect("valid timestamp")
         .timestamp();
 
@@ -155,6 +186,24 @@ pub fn generate_jwt(user: &User) -> Result<String, AuthError> {
         &EncodingKey::from_secret(secret.as_bytes()),
     )
     .map_err(|_| AuthError::InvalidToken)
+}
+
+pub fn generate_refresh_token() -> String {
+    use rand::Rng;
+    let token: String = rand::thread_rng()
+        .sample_iter(&rand::distributions::Alphanumeric)
+        .take(64)
+        .map(char::from)
+        .collect();
+    token
+}
+
+pub fn hash_refresh_token(token: &str) -> Result<String, AuthError> {
+    bcrypt::hash(token, BCRYPT_COST).map_err(|_| AuthError::HashingError)
+}
+
+pub fn verify_refresh_token(token: &str, hash: &str) -> Result<bool, AuthError> {
+    bcrypt::verify(token, hash).map_err(|_| AuthError::HashingError)
 }
 
 pub fn validate_jwt(token: &str) -> Result<Claims, AuthError> {
@@ -292,5 +341,33 @@ mod tests {
             "this_is_a_valid_secret_that_is_at_least_32_bytes",
         );
         assert!(get_jwt_secret().is_ok());
+    }
+
+    #[test]
+    fn test_generate_refresh_token_is_cryptographically_secure() {
+        let token1 = generate_refresh_token();
+        let token2 = generate_refresh_token();
+
+        assert_eq!(token1.len(), 64);
+        assert_eq!(token2.len(), 64);
+        assert_ne!(token1, token2, "Each token should be unique");
+        assert!(token1.chars().all(|c| c.is_alphanumeric()));
+    }
+
+    #[test]
+    fn test_hash_and_verify_refresh_token() {
+        let token = generate_refresh_token();
+        let hash = hash_refresh_token(&token).expect("hashing should succeed");
+
+        assert!(hash.starts_with("$2b$") || hash.starts_with("$2a$"));
+        assert!(hash.len() > 50);
+
+        let is_valid = verify_refresh_token(&token, &hash).expect("verification should succeed");
+        assert!(is_valid);
+
+        let wrong_token = generate_refresh_token();
+        let is_invalid =
+            verify_refresh_token(&wrong_token, &hash).expect("verification should succeed");
+        assert!(!is_invalid);
     }
 }

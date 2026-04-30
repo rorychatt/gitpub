@@ -6,7 +6,7 @@ use axum::{
     routing::{get, post},
     Json, Router,
 };
-use gitpub_core::User;
+use gitpub_core::{RefreshToken, User};
 use serde::Serialize;
 use std::{collections::HashMap, sync::Arc};
 use tokio::sync::RwLock;
@@ -14,6 +14,7 @@ use tokio::sync::RwLock;
 #[derive(Clone)]
 struct AppState {
     users: Arc<RwLock<HashMap<String, User>>>,
+    refresh_tokens: Arc<RwLock<HashMap<String, RefreshToken>>>,
 }
 
 #[tokio::main]
@@ -24,12 +25,15 @@ async fn main() -> anyhow::Result<()> {
 
     let state = Arc::new(AppState {
         users: Arc::new(RwLock::new(HashMap::new())),
+        refresh_tokens: Arc::new(RwLock::new(HashMap::new())),
     });
 
     let app = Router::new()
         .route("/health", get(health_check))
         .route("/api/auth/register", post(register))
         .route("/api/auth/login", post(login))
+        .route("/api/auth/refresh", post(refresh))
+        .route("/api/auth/logout", post(logout))
         .route("/api/auth/me", get(get_current_user))
         .route("/api/repositories", get(list_repositories))
         .with_state(state);
@@ -81,15 +85,30 @@ async fn register(
     let password_hash = auth::hash_password(&req.password)?;
     let user = User::new(req.username.clone(), req.email.clone(), password_hash);
 
-    let token = auth::generate_jwt(&user)?;
+    let access_token = auth::generate_jwt(&user)?;
+    let refresh_token = auth::generate_refresh_token();
+    let refresh_token_hash = auth::hash_refresh_token(&refresh_token)?;
+
+    let expires_at = chrono::Utc::now()
+        .checked_add_signed(chrono::Duration::days(auth::REFRESH_TOKEN_EXPIRATION_DAYS))
+        .expect("valid timestamp")
+        .timestamp();
+
+    let refresh_token_record = RefreshToken::new(user.id.clone(), refresh_token_hash.clone(), expires_at);
 
     let mut users = state.users.write().await;
     users.insert(req.username.clone(), user.clone());
 
+    let mut refresh_tokens = state.refresh_tokens.write().await;
+    refresh_tokens.insert(refresh_token_hash, refresh_token_record);
+
     Ok((
         StatusCode::CREATED,
         Json(auth::LoginResponse {
-            token,
+            access_token,
+            refresh_token,
+            token_type: "Bearer".to_string(),
+            expires_in: auth::ACCESS_TOKEN_EXPIRATION_MINUTES * 60,
             user: user.into(),
         }),
     ))
@@ -109,12 +128,79 @@ async fn login(
         return Err(auth::AuthError::InvalidCredentials);
     }
 
-    let token = auth::generate_jwt(user)?;
+    let access_token = auth::generate_jwt(user)?;
+    let refresh_token = auth::generate_refresh_token();
+    let refresh_token_hash = auth::hash_refresh_token(&refresh_token)?;
+
+    let expires_at = chrono::Utc::now()
+        .checked_add_signed(chrono::Duration::days(auth::REFRESH_TOKEN_EXPIRATION_DAYS))
+        .expect("valid timestamp")
+        .timestamp();
+
+    let refresh_token_record = RefreshToken::new(user.id.clone(), refresh_token_hash.clone(), expires_at);
+
+    let mut refresh_tokens = state.refresh_tokens.write().await;
+    refresh_tokens.insert(refresh_token_hash, refresh_token_record);
 
     Ok(Json(auth::LoginResponse {
-        token,
+        access_token,
+        refresh_token,
+        token_type: "Bearer".to_string(),
+        expires_in: auth::ACCESS_TOKEN_EXPIRATION_MINUTES * 60,
         user: user.clone().into(),
     }))
+}
+
+async fn refresh(
+    State(state): State<Arc<AppState>>,
+    Json(req): Json<auth::RefreshRequest>,
+) -> Result<Json<auth::RefreshResponse>, auth::AuthError> {
+    let refresh_token_hash = auth::hash_refresh_token(&req.refresh_token)?;
+
+    let refresh_tokens = state.refresh_tokens.read().await;
+    let token_record = refresh_tokens
+        .get(&refresh_token_hash)
+        .ok_or(auth::AuthError::InvalidRefreshToken)?;
+
+    if token_record.is_expired() {
+        return Err(auth::AuthError::RefreshTokenExpired);
+    }
+
+    if token_record.is_revoked() {
+        return Err(auth::AuthError::RefreshTokenRevoked);
+    }
+
+    let users = state.users.read().await;
+    let user = users
+        .values()
+        .find(|u| u.id == token_record.user_id)
+        .ok_or(auth::AuthError::InvalidRefreshToken)?;
+
+    let access_token = auth::generate_jwt(user)?;
+
+    Ok(Json(auth::RefreshResponse {
+        access_token,
+        token_type: "Bearer".to_string(),
+        expires_in: auth::ACCESS_TOKEN_EXPIRATION_MINUTES * 60,
+    }))
+}
+
+async fn logout(
+    State(state): State<Arc<AppState>>,
+    Json(req): Json<auth::RefreshRequest>,
+) -> Result<StatusCode, auth::AuthError> {
+    let refresh_token_hash = auth::hash_refresh_token(&req.refresh_token)?;
+
+    let mut refresh_tokens = state.refresh_tokens.write().await;
+
+    if let Some(token_record) = refresh_tokens.get_mut(&refresh_token_hash) {
+        let now = chrono::Utc::now().timestamp();
+        let mut updated_record = token_record.clone();
+        updated_record.revoked_at = Some(now);
+        refresh_tokens.insert(refresh_token_hash, updated_record);
+    }
+
+    Ok(StatusCode::NO_CONTENT)
 }
 
 async fn get_current_user(
@@ -144,12 +230,15 @@ mod tests {
 
         let state = Arc::new(AppState {
             users: Arc::new(RwLock::new(HashMap::new())),
+            refresh_tokens: Arc::new(RwLock::new(HashMap::new())),
         });
 
         Router::new()
             .route("/health", get(health_check))
             .route("/api/auth/register", post(register))
             .route("/api/auth/login", post(login))
+            .route("/api/auth/refresh", post(refresh))
+            .route("/api/auth/logout", post(logout))
             .route("/api/auth/me", get(get_current_user))
             .route("/api/repositories", get(list_repositories))
             .with_state(state)
@@ -190,7 +279,10 @@ mod tests {
             .unwrap();
         let json: auth::LoginResponse = serde_json::from_slice(&body).unwrap();
 
-        assert!(!json.token.is_empty());
+        assert!(!json.access_token.is_empty());
+        assert!(!json.refresh_token.is_empty());
+        assert_eq!(json.token_type, "Bearer");
+        assert_eq!(json.expires_in, 15 * 60);
         assert_eq!(json.user.username, "newuser");
         assert_eq!(json.user.email, "newuser@example.com");
     }
@@ -241,7 +333,8 @@ mod tests {
             .unwrap();
         let json: auth::LoginResponse = serde_json::from_slice(&body).unwrap();
 
-        assert!(!json.token.is_empty());
+        assert!(!json.access_token.is_empty());
+        assert!(!json.refresh_token.is_empty());
         assert_eq!(json.user.username, "testuser");
     }
 
@@ -332,7 +425,7 @@ mod tests {
             .await
             .unwrap();
         let json: auth::LoginResponse = serde_json::from_slice(&body).unwrap();
-        let token = json.token;
+        let token = json.access_token;
 
         let response = app
             .oneshot(
@@ -366,5 +459,204 @@ mod tests {
             .unwrap();
 
         assert_eq!(response.status(), StatusCode::UNAUTHORIZED);
+    }
+
+    #[tokio::test]
+    async fn test_login_returns_access_and_refresh_tokens() {
+        let app = create_test_app();
+
+        let register_body = serde_json::json!({
+            "username": "testuser",
+            "email": "test@example.com",
+            "password": "password123"
+        });
+
+        app.clone()
+            .oneshot(
+                Request::builder()
+                    .method("POST")
+                    .uri("/api/auth/register")
+                    .header("content-type", "application/json")
+                    .body(Body::from(serde_json::to_string(&register_body).unwrap()))
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+
+        let login_body = serde_json::json!({
+            "username": "testuser",
+            "password": "password123"
+        });
+
+        let response = app
+            .oneshot(
+                Request::builder()
+                    .method("POST")
+                    .uri("/api/auth/login")
+                    .header("content-type", "application/json")
+                    .body(Body::from(serde_json::to_string(&login_body).unwrap()))
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+
+        assert_eq!(response.status(), StatusCode::OK);
+
+        let body = axum::body::to_bytes(response.into_body(), usize::MAX)
+            .await
+            .unwrap();
+        let json: auth::LoginResponse = serde_json::from_slice(&body).unwrap();
+
+        assert!(!json.access_token.is_empty());
+        assert!(!json.refresh_token.is_empty());
+        assert_eq!(json.token_type, "Bearer");
+        assert_eq!(json.expires_in, 15 * 60);
+    }
+
+    #[tokio::test]
+    async fn test_refresh_endpoint_returns_new_access_token() {
+        let app = create_test_app();
+
+        let register_body = serde_json::json!({
+            "username": "testuser",
+            "email": "test@example.com",
+            "password": "password123"
+        });
+
+        let register_response = app
+            .clone()
+            .oneshot(
+                Request::builder()
+                    .method("POST")
+                    .uri("/api/auth/register")
+                    .header("content-type", "application/json")
+                    .body(Body::from(serde_json::to_string(&register_body).unwrap()))
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+
+        let body = axum::body::to_bytes(register_response.into_body(), usize::MAX)
+            .await
+            .unwrap();
+        let json: auth::LoginResponse = serde_json::from_slice(&body).unwrap();
+        let refresh_token = json.refresh_token;
+
+        let refresh_body = serde_json::json!({
+            "refresh_token": refresh_token
+        });
+
+        let response = app
+            .oneshot(
+                Request::builder()
+                    .method("POST")
+                    .uri("/api/auth/refresh")
+                    .header("content-type", "application/json")
+                    .body(Body::from(serde_json::to_string(&refresh_body).unwrap()))
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+
+        assert_eq!(response.status(), StatusCode::OK);
+
+        let body = axum::body::to_bytes(response.into_body(), usize::MAX)
+            .await
+            .unwrap();
+        let json: auth::RefreshResponse = serde_json::from_slice(&body).unwrap();
+
+        assert!(!json.access_token.is_empty());
+        assert_eq!(json.token_type, "Bearer");
+        assert_eq!(json.expires_in, 15 * 60);
+    }
+
+    #[tokio::test]
+    async fn test_refresh_endpoint_rejects_invalid_refresh_token() {
+        let app = create_test_app();
+
+        let refresh_body = serde_json::json!({
+            "refresh_token": "invalid_refresh_token"
+        });
+
+        let response = app
+            .oneshot(
+                Request::builder()
+                    .method("POST")
+                    .uri("/api/auth/refresh")
+                    .header("content-type", "application/json")
+                    .body(Body::from(serde_json::to_string(&refresh_body).unwrap()))
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+
+        assert_eq!(response.status(), StatusCode::UNAUTHORIZED);
+    }
+
+    #[tokio::test]
+    async fn test_logout_revokes_refresh_token() {
+        let app = create_test_app();
+
+        let register_body = serde_json::json!({
+            "username": "testuser",
+            "email": "test@example.com",
+            "password": "password123"
+        });
+
+        let register_response = app
+            .clone()
+            .oneshot(
+                Request::builder()
+                    .method("POST")
+                    .uri("/api/auth/register")
+                    .header("content-type", "application/json")
+                    .body(Body::from(serde_json::to_string(&register_body).unwrap()))
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+
+        let body = axum::body::to_bytes(register_response.into_body(), usize::MAX)
+            .await
+            .unwrap();
+        let json: auth::LoginResponse = serde_json::from_slice(&body).unwrap();
+        let refresh_token = json.refresh_token;
+
+        let logout_body = serde_json::json!({
+            "refresh_token": refresh_token.clone()
+        });
+
+        let logout_response = app
+            .clone()
+            .oneshot(
+                Request::builder()
+                    .method("POST")
+                    .uri("/api/auth/logout")
+                    .header("content-type", "application/json")
+                    .body(Body::from(serde_json::to_string(&logout_body).unwrap()))
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+
+        assert_eq!(logout_response.status(), StatusCode::NO_CONTENT);
+
+        let refresh_body = serde_json::json!({
+            "refresh_token": refresh_token
+        });
+
+        let refresh_response = app
+            .oneshot(
+                Request::builder()
+                    .method("POST")
+                    .uri("/api/auth/refresh")
+                    .header("content-type", "application/json")
+                    .body(Body::from(serde_json::to_string(&refresh_body).unwrap()))
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+
+        assert_eq!(refresh_response.status(), StatusCode::UNAUTHORIZED);
     }
 }

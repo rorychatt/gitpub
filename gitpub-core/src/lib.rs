@@ -49,6 +49,44 @@ impl User {
     }
 }
 
+/// Refresh token representation
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct RefreshToken {
+    pub id: String,
+    pub user_id: String,
+    pub token_hash: String,
+    pub expires_at: i64,
+    pub created_at: i64,
+    pub last_used_at: Option<i64>,
+    pub revoked_at: Option<i64>,
+}
+
+impl RefreshToken {
+    pub fn new(user_id: String, token_hash: String, expires_at: i64) -> Self {
+        Self {
+            id: uuid::Uuid::new_v4().to_string(),
+            user_id,
+            token_hash,
+            expires_at,
+            created_at: chrono::Utc::now().timestamp(),
+            last_used_at: None,
+            revoked_at: None,
+        }
+    }
+
+    pub fn is_expired(&self) -> bool {
+        chrono::Utc::now().timestamp() > self.expires_at
+    }
+
+    pub fn is_revoked(&self) -> bool {
+        self.revoked_at.is_some()
+    }
+
+    pub fn is_valid(&self) -> bool {
+        !self.is_expired() && !self.is_revoked()
+    }
+}
+
 /// Commit metadata
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Commit {
@@ -74,6 +112,96 @@ impl Database {
 
     pub fn pool(&self) -> &sqlx::PgPool {
         &self.pool
+    }
+
+    pub async fn create_refresh_token(
+        &self,
+        user_id: &str,
+        token_hash: &str,
+        expires_at: i64,
+    ) -> Result<RefreshToken> {
+        let refresh_token = RefreshToken::new(user_id.to_string(), token_hash.to_string(), expires_at);
+
+        sqlx::query!(
+            r#"
+            INSERT INTO refresh_tokens (id, user_id, token_hash, expires_at, created_at)
+            VALUES ($1, $2, $3, $4, $5)
+            "#,
+            refresh_token.id,
+            refresh_token.user_id,
+            refresh_token.token_hash,
+            refresh_token.expires_at,
+            refresh_token.created_at
+        )
+        .execute(&self.pool)
+        .await?;
+
+        Ok(refresh_token)
+    }
+
+    pub async fn find_refresh_token(&self, token_hash: &str) -> Result<Option<RefreshToken>> {
+        let result = sqlx::query_as!(
+            RefreshToken,
+            r#"
+            SELECT id, user_id, token_hash, expires_at, created_at, last_used_at, revoked_at
+            FROM refresh_tokens
+            WHERE token_hash = $1
+            "#,
+            token_hash
+        )
+        .fetch_optional(&self.pool)
+        .await?;
+
+        Ok(result)
+    }
+
+    pub async fn update_refresh_token_last_used(&self, token_hash: &str) -> Result<()> {
+        let now = chrono::Utc::now().timestamp();
+        sqlx::query!(
+            r#"
+            UPDATE refresh_tokens
+            SET last_used_at = $1
+            WHERE token_hash = $2
+            "#,
+            now,
+            token_hash
+        )
+        .execute(&self.pool)
+        .await?;
+
+        Ok(())
+    }
+
+    pub async fn revoke_refresh_token(&self, token_hash: &str) -> Result<()> {
+        let now = chrono::Utc::now().timestamp();
+        sqlx::query!(
+            r#"
+            UPDATE refresh_tokens
+            SET revoked_at = $1
+            WHERE token_hash = $2
+            "#,
+            now,
+            token_hash
+        )
+        .execute(&self.pool)
+        .await?;
+
+        Ok(())
+    }
+
+    pub async fn cleanup_expired_tokens(&self) -> Result<u64> {
+        let now = chrono::Utc::now().timestamp();
+        let result = sqlx::query!(
+            r#"
+            DELETE FROM refresh_tokens
+            WHERE expires_at < $1
+            "#,
+            now
+        )
+        .execute(&self.pool)
+        .await?;
+
+        Ok(result.rows_affected())
     }
 }
 
