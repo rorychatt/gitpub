@@ -134,9 +134,20 @@ mod tests {
     #[test]
     fn test_validate_jwt_invalid_signature() {
         env::set_var("JWT_SECRET", "test_secret_key_at_least_32_characters_long");
-        let token = create_jwt("user123", "testuser").expect("Failed to create JWT");
 
-        env::set_var("JWT_SECRET", "different_secret_key_at_least_32_characters");
+        let claims = Claims {
+            user_id: "user123".to_string(),
+            username: "testuser".to_string(),
+            exp: chrono::Utc::now().timestamp() + 3600,
+        };
+
+        let token = encode(
+            &Header::default(),
+            &claims,
+            &EncodingKey::from_secret(b"different_secret_key_at_least_32_characters"),
+        )
+        .expect("Failed to create token with wrong secret");
+
         let result = validate_jwt(&token);
         assert!(result.is_err());
     }
