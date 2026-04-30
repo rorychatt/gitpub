@@ -29,7 +29,10 @@ async fn main() -> anyhow::Result<()> {
         .route("/api/auth/register", post(routes::auth::register))
         .route("/api/auth/login", post(routes::auth::login))
         .route("/api/auth/me", get(routes::auth::get_current_user))
-        .route("/api/repositories", get(routes::repositories::list_repositories))
+        .route(
+            "/api/repositories",
+            get(routes::repositories::list_repositories),
+        )
         .with_state(state);
 
     let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await?;
@@ -62,7 +65,10 @@ mod tests {
             .route("/api/auth/register", post(routes::auth::register))
             .route("/api/auth/login", post(routes::auth::login))
             .route("/api/auth/me", get(routes::auth::get_current_user))
-            .route("/api/repositories", get(routes::repositories::list_repositories))
+            .route(
+                "/api/repositories",
+                get(routes::repositories::list_repositories),
+            )
             .with_state(state)
     }
 
