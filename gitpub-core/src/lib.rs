@@ -2,7 +2,7 @@ use anyhow::Result;
 use serde::{Deserialize, Serialize};
 
 /// Core repository representation
-#[derive(Debug, Clone, Serialize, Deserialize, sqlx::FromRow)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, sqlx::FromRow)]
 pub struct Repository {
     pub id: String,
     pub name: String,
@@ -28,7 +28,7 @@ impl Repository {
 }
 
 /// User representation
-#[derive(Debug, Clone, Serialize, Deserialize, sqlx::FromRow)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, sqlx::FromRow)]
 pub struct User {
     pub id: String,
     pub username: String,
@@ -50,7 +50,7 @@ impl User {
 }
 
 /// Commit metadata
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Commit {
     pub sha: String,
     pub repository_id: String,
@@ -237,11 +237,11 @@ mod tests {
     #[tokio::test]
     #[ignore]
     async fn test_insert_and_get_user() {
-        let database_url = std::env::var("TEST_DATABASE_URL")
-            .expect("TEST_DATABASE_URL must be set for integration tests");
+        let database_url = std::env::var("DATABASE_URL")
+            .expect("DATABASE_URL must be set for integration tests");
         let db = Database::new(&database_url).await.unwrap();
 
-        let user = User::new("testuser".to_string(), "test@example.com".to_string());
+        let user = User::new("testuser".to_string(), "test@example.com".to_string(), "hash123".to_string());
         db.insert_user(&user).await.unwrap();
 
         let fetched_by_id = db.get_user_by_id(&user.id).await.unwrap();
@@ -260,8 +260,8 @@ mod tests {
     #[tokio::test]
     #[ignore]
     async fn test_insert_and_get_repository() {
-        let database_url = std::env::var("TEST_DATABASE_URL")
-            .expect("TEST_DATABASE_URL must be set for integration tests");
+        let database_url = std::env::var("DATABASE_URL")
+            .expect("DATABASE_URL must be set for integration tests");
         let db = Database::new(&database_url).await.unwrap();
 
         let user = User::new("repoowner".to_string(), "owner@example.com".to_string());
@@ -289,8 +289,8 @@ mod tests {
     #[tokio::test]
     #[ignore]
     async fn test_list_users_pagination() {
-        let database_url = std::env::var("TEST_DATABASE_URL")
-            .expect("TEST_DATABASE_URL must be set for integration tests");
+        let database_url = std::env::var("DATABASE_URL")
+            .expect("DATABASE_URL must be set for integration tests");
         let db = Database::new(&database_url).await.unwrap();
 
         for i in 0..5 {
@@ -308,8 +308,8 @@ mod tests {
     #[tokio::test]
     #[ignore]
     async fn test_list_repositories_by_owner() {
-        let database_url = std::env::var("TEST_DATABASE_URL")
-            .expect("TEST_DATABASE_URL must be set for integration tests");
+        let database_url = std::env::var("DATABASE_URL")
+            .expect("DATABASE_URL must be set for integration tests");
         let db = Database::new(&database_url).await.unwrap();
 
         let user1 = User::new("owner1".to_string(), "owner1@example.com".to_string());
@@ -334,8 +334,8 @@ mod tests {
     #[tokio::test]
     #[ignore]
     async fn test_get_nonexistent_records() {
-        let database_url = std::env::var("TEST_DATABASE_URL")
-            .expect("TEST_DATABASE_URL must be set for integration tests");
+        let database_url = std::env::var("DATABASE_URL")
+            .expect("DATABASE_URL must be set for integration tests");
         let db = Database::new(&database_url).await.unwrap();
 
         let user = db.get_user_by_id("nonexistent-id").await.unwrap();

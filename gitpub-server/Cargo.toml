@@ -20,10 +20,10 @@ axum-extra = { version = "0.9.4", features = ["typed-header"] }
 chrono = { workspace = true }
 
 [dev-dependencies]
-tempfile = "3"
-tower = { version = "0.5.2", features = ["util"] }
-http-body-util = "0.1"
 tokio-test = { workspace = true }
+tower = { workspace = true }
+http-body-util = { workspace = true }
+tempfile = { workspace = true }
 mockall = { workspace = true }
 rstest = { workspace = true }
 assert_matches = { workspace = true }

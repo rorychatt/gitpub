@@ -1,7 +1,4 @@
-use axum::{
-    http::StatusCode,
-    Router,
-};
+use axum::{http::StatusCode, Router};
 use axum_test::TestServer;
 
 fn create_test_app() -> Router {
