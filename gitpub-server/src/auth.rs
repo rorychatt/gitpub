@@ -78,6 +78,7 @@ pub struct RefreshResponse {
 }
 
 #[derive(Debug)]
+#[allow(dead_code)]
 pub enum AuthError {
     InvalidCredentials,
     TokenExpired,
