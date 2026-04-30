@@ -13,20 +13,6 @@ jobs:
   test:
     runs-on: ubuntu-latest
 
-    services:
-      postgres:
-        image: postgres:16
-        env:
-          POSTGRES_PASSWORD: postgres
-          POSTGRES_DB: gitpub_test
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-        ports:
-          - 5432:5432
-
     steps:
     - uses: actions/checkout@v4
 
@@ -48,7 +34,6 @@ jobs:
     - name: Run tests
       run: cargo test --verbose --all-features
       env:
-        DATABASE_URL: postgresql://postgres:postgres@localhost/gitpub_test
         JWT_SECRET: test_secret_key_that_is_at_least_32_bytes_long_for_ci
 
     - name: Run doc tests
