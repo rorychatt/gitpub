@@ -17,8 +17,11 @@ jsonwebtoken = "9.3.0"
 bcrypt = "0.15.1"
 rand = "0.8"
 tower-http = { version = "0.6.1", features = ["cors"] }
+tower_governor = "0.4.2"
+governor = "0.6.3"
 axum-extra = { version = "0.9.4", features = ["typed-header"] }
 chrono = { workspace = true }
+base64 = "0.22"
 
 [dev-dependencies]
 tokio-test = { workspace = true }

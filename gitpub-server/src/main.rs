@@ -1,4 +1,5 @@
 mod auth;
+mod rate_limit;
 mod git_http;
 
 use axum::{
@@ -13,10 +14,10 @@ use std::{collections::HashMap, path::PathBuf, sync::Arc};
 use tokio::sync::RwLock;
 
 #[derive(Clone)]
-struct AppState {
-    users: Arc<RwLock<HashMap<String, User>>>,
-    refresh_tokens: Arc<RwLock<HashMap<String, RefreshToken>>>,
-    repos_path: PathBuf,
+pub struct AppState {
+    pub users: Arc<RwLock<HashMap<String, User>>>,
+    pub refresh_tokens: Arc<RwLock<HashMap<String, RefreshToken>>>,
+    pub repos_path: PathBuf,
 }
 
 #[tokio::main]
@@ -35,12 +36,18 @@ async fn main() -> anyhow::Result<()> {
         repos_path,
     });
 
-    let app = Router::new()
-        .route("/health", get(health_check))
+    let rate_limiter = rate_limit::create_auth_rate_limiter();
+
+    let auth_routes = Router::new()
         .route("/api/auth/register", post(register))
         .route("/api/auth/login", post(login))
         .route("/api/auth/refresh", post(refresh))
         .route("/api/auth/logout", post(logout))
+        .layer(rate_limiter);
+
+    let app = Router::new()
+        .route("/health", get(health_check))
+        .merge(auth_routes)
         .route("/api/auth/me", get(get_current_user))
         .route("/api/repositories", get(list_repositories))
         .route("/:owner/:repo/info/refs", get(git_http::handle_info_refs))
@@ -259,12 +266,18 @@ mod tests {
             repos_path: PathBuf::from("/tmp/test-repos"),
         });
 
-        Router::new()
-            .route("/health", get(health_check))
+        let rate_limiter = rate_limit::create_auth_rate_limiter();
+
+        let auth_routes = Router::new()
             .route("/api/auth/register", post(register))
             .route("/api/auth/login", post(login))
             .route("/api/auth/refresh", post(refresh))
             .route("/api/auth/logout", post(logout))
+            .layer(rate_limiter);
+
+        Router::new()
+            .route("/health", get(health_check))
+            .merge(auth_routes)
             .route("/api/auth/me", get(get_current_user))
             .route("/api/repositories", get(list_repositories))
             .with_state(state)

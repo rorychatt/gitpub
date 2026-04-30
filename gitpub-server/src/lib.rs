@@ -1,13 +1,26 @@
-use axum::{extract::State, routing::get, Json, Router};
-use serde::Serialize;
-use std::sync::Arc;
+pub mod auth;
+pub mod rate_limit;
 
-#[derive(Clone, Default)]
-pub struct AppState {}
+use axum::{extract::State, routing::get, Json, Router};
+use gitpub_core::{RefreshToken, User};
+use serde::Serialize;
+use std::{collections::HashMap, path::PathBuf, sync::Arc};
+use tokio::sync::RwLock;
+
+#[derive(Clone)]
+pub struct AppState {
+    pub users: Arc<RwLock<HashMap<String, User>>>,
+    pub refresh_tokens: Arc<RwLock<HashMap<String, RefreshToken>>>,
+    pub repos_path: PathBuf,
+}
 
 impl AppState {
-    pub fn new() -> Self {
-        Self {}
+    pub fn new(repos_path: PathBuf) -> Self {
+        Self {
+            users: Arc::new(RwLock::new(HashMap::new())),
+            refresh_tokens: Arc::new(RwLock::new(HashMap::new())),
+            repos_path,
+        }
     }
 }
 
