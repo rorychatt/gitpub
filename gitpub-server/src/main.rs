@@ -37,6 +37,8 @@ async fn main() -> anyhow::Result<()> {
         .route("/health", get(health_check))
         .route("/api/auth/register", post(register))
         .route("/api/auth/login", post(login))
+        .route("/api/auth/verify", post(verify_email))
+        .route("/api/auth/resend-verification", post(resend_verification))
         .route("/api/auth/me", get(get_current_user))
         .route("/api/repositories", get(list_repositories))
         .route("/:owner/:repo/info/refs", get(git_http::handle_info_refs))
@@ -87,7 +89,7 @@ async fn list_repositories(
 async fn register(
     State(state): State<Arc<AppState>>,
     Json(req): Json<auth::RegisterRequest>,
-) -> Result<(StatusCode, Json<auth::LoginResponse>), auth::AuthError> {
+) -> Result<(StatusCode, Json<auth::RegisterResponse>), auth::AuthError> {
     let users = state.users.read().await;
     if users.contains_key(&req.username) {
         return Err(auth::AuthError::UserAlreadyExists);
@@ -95,18 +97,31 @@ async fn register(
     drop(users);
 
     let password_hash = auth::hash_password(&req.password)?;
-    let user = User::new(req.username.clone(), req.email.clone(), password_hash);
 
-    let token = auth::generate_jwt(&user)?;
+    // Generate verification token
+    let verification_token = uuid::Uuid::new_v4().to_string();
+    let token_expiration = chrono::Utc::now()
+        .checked_add_signed(chrono::Duration::hours(24))
+        .expect("valid timestamp")
+        .timestamp();
+
+    let user = User::new(req.username.clone(), req.email.clone(), password_hash)
+        .with_verification_token(verification_token.clone(), token_expiration);
+
+    // Log verification URL to console
+    tracing::info!(
+        "Verification URL for user '{}': http://localhost:3000/api/auth/verify?token={}",
+        user.username,
+        verification_token
+    );
 
     let mut users = state.users.write().await;
     users.insert(req.username.clone(), user.clone());
 
     Ok((
         StatusCode::CREATED,
-        Json(auth::LoginResponse {
-            token,
-            user: user.into(),
+        Json(auth::RegisterResponse {
+            message: "Registration successful. Please verify your email.".to_string(),
         }),
     ))
 }
@@ -125,12 +140,100 @@ async fn login(
         return Err(auth::AuthError::InvalidCredentials);
     }
 
+    // Check if email is verified
+    if !user.email_verified {
+        return Err(auth::AuthError::EmailNotVerified);
+    }
+
     let token = auth::generate_jwt(user)?;
 
     Ok(Json(auth::LoginResponse {
         token,
         user: user.clone().into(),
     }))
+}
+
+async fn verify_email(
+    State(state): State<Arc<AppState>>,
+    Json(req): Json<auth::VerifyEmailRequest>,
+) -> Result<Json<auth::LoginResponse>, auth::AuthError> {
+    let mut users = state.users.write().await;
+
+    // Find user by verification token
+    let user_entry = users
+        .iter_mut()
+        .find(|(_, u)| u.verification_token.as_ref() == Some(&req.token))
+        .ok_or(auth::AuthError::InvalidVerificationToken)?;
+
+    let user = user_entry.1;
+
+    // Check if token is expired
+    let now = chrono::Utc::now().timestamp();
+    if let Some(expires_at) = user.verification_token_expires_at {
+        if expires_at < now {
+            return Err(auth::AuthError::VerificationTokenExpired);
+        }
+    }
+
+    // Mark email as verified and clear token
+    user.email_verified = true;
+    user.verification_token = None;
+    user.verification_token_expires_at = None;
+
+    let token = auth::generate_jwt(user)?;
+
+    Ok(Json(auth::LoginResponse {
+        token,
+        user: user.clone().into(),
+    }))
+}
+
+async fn resend_verification(
+    State(state): State<Arc<AppState>>,
+    Json(req): Json<auth::ResendVerificationRequest>,
+) -> Result<(StatusCode, Json<auth::RegisterResponse>), auth::AuthError> {
+    let mut users = state.users.write().await;
+
+    // Find user by email
+    let user = users
+        .iter_mut()
+        .find(|(_, u)| u.email == req.email)
+        .map(|(_, u)| u)
+        .ok_or(auth::AuthError::InvalidCredentials)?;
+
+    // Check if already verified
+    if user.email_verified {
+        return Ok((
+            StatusCode::OK,
+            Json(auth::RegisterResponse {
+                message: "Email is already verified.".to_string(),
+            }),
+        ));
+    }
+
+    // Generate new token
+    let verification_token = uuid::Uuid::new_v4().to_string();
+    let token_expiration = chrono::Utc::now()
+        .checked_add_signed(chrono::Duration::hours(24))
+        .expect("valid timestamp")
+        .timestamp();
+
+    user.verification_token = Some(verification_token.clone());
+    user.verification_token_expires_at = Some(token_expiration);
+
+    // Log verification URL to console
+    tracing::info!(
+        "Verification URL for user '{}': http://localhost:3000/api/auth/verify?token={}",
+        user.username,
+        verification_token
+    );
+
+    Ok((
+        StatusCode::OK,
+        Json(auth::RegisterResponse {
+            message: "Verification email resent. Please check your email.".to_string(),
+        }),
+    ))
 }
 
 async fn get_current_user(

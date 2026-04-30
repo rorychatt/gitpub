@@ -35,6 +35,9 @@ pub struct User {
     pub email: String,
     pub password_hash: String,
     pub created_at: i64,
+    pub email_verified: bool,
+    pub verification_token: Option<String>,
+    pub verification_token_expires_at: Option<i64>,
 }
 
 impl User {
@@ -45,7 +48,16 @@ impl User {
             email,
             password_hash,
             created_at: chrono::Utc::now().timestamp(),
+            email_verified: false,
+            verification_token: None,
+            verification_token_expires_at: None,
         }
+    }
+
+    pub fn with_verification_token(mut self, token: String, expires_at: i64) -> Self {
+        self.verification_token = Some(token);
+        self.verification_token_expires_at = Some(expires_at);
+        self
     }
 }
 
@@ -77,11 +89,14 @@ impl Database {
 
     // User operations
     pub async fn insert_user(&self, user: &User) -> Result<()> {
-        sqlx::query("INSERT INTO users (id, username, email, created_at) VALUES ($1, $2, $3, $4)")
+        sqlx::query("INSERT INTO users (id, username, email, created_at, email_verified, verification_token, verification_token_expires_at) VALUES ($1, $2, $3, $4, $5, $6, $7)")
             .bind(&user.id)
             .bind(&user.username)
             .bind(&user.email)
             .bind(user.created_at)
+            .bind(user.email_verified)
+            .bind(&user.verification_token)
+            .bind(&user.verification_token_expires_at)
             .execute(&self.pool)
             .await?;
         Ok(())
@@ -89,7 +104,7 @@ impl Database {
 
     pub async fn get_user_by_id(&self, id: &str) -> Result<Option<User>> {
         let user = sqlx::query_as::<_, User>(
-            "SELECT id, username, email, created_at FROM users WHERE id = $1",
+            "SELECT id, username, email, password_hash, created_at, email_verified, verification_token, verification_token_expires_at FROM users WHERE id = $1",
         )
         .bind(id)
         .fetch_optional(&self.pool)
@@ -99,7 +114,7 @@ impl Database {
 
     pub async fn get_user_by_username(&self, username: &str) -> Result<Option<User>> {
         let user = sqlx::query_as::<_, User>(
-            "SELECT id, username, email, created_at FROM users WHERE username = $1",
+            "SELECT id, username, email, password_hash, created_at, email_verified, verification_token, verification_token_expires_at FROM users WHERE username = $1",
         )
         .bind(username)
         .fetch_optional(&self.pool)
@@ -109,7 +124,7 @@ impl Database {
 
     pub async fn get_user_by_email(&self, email: &str) -> Result<Option<User>> {
         let user = sqlx::query_as::<_, User>(
-            "SELECT id, username, email, created_at FROM users WHERE email = $1",
+            "SELECT id, username, email, password_hash, created_at, email_verified, verification_token, verification_token_expires_at FROM users WHERE email = $1",
         )
         .bind(email)
         .fetch_optional(&self.pool)
@@ -121,13 +136,41 @@ impl Database {
         let limit = limit.unwrap_or(100);
         let offset = offset.unwrap_or(0);
         let users = sqlx::query_as::<_, User>(
-            "SELECT id, username, email, created_at FROM users ORDER BY created_at DESC LIMIT $1 OFFSET $2",
+            "SELECT id, username, email, password_hash, created_at, email_verified, verification_token, verification_token_expires_at FROM users ORDER BY created_at DESC LIMIT $1 OFFSET $2",
         )
         .bind(limit)
         .bind(offset)
         .fetch_all(&self.pool)
         .await?;
         Ok(users)
+    }
+
+    pub async fn get_user_by_verification_token(&self, token: &str) -> Result<Option<User>> {
+        let user = sqlx::query_as::<_, User>(
+            "SELECT id, username, email, password_hash, created_at, email_verified, verification_token, verification_token_expires_at FROM users WHERE verification_token = $1",
+        )
+        .bind(token)
+        .fetch_optional(&self.pool)
+        .await?;
+        Ok(user)
+    }
+
+    pub async fn verify_user_email(&self, user_id: &str) -> Result<()> {
+        sqlx::query("UPDATE users SET email_verified = true, verification_token = NULL, verification_token_expires_at = NULL WHERE id = $1")
+            .bind(user_id)
+            .execute(&self.pool)
+            .await?;
+        Ok(())
+    }
+
+    pub async fn update_user_verification_token(&self, user_id: &str, token: Option<String>, expires_at: Option<i64>) -> Result<()> {
+        sqlx::query("UPDATE users SET verification_token = $1, verification_token_expires_at = $2 WHERE id = $3")
+            .bind(&token)
+            .bind(&expires_at)
+            .bind(user_id)
+            .execute(&self.pool)
+            .await?;
+        Ok(())
     }
 
     // Repository operations
