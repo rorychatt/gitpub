@@ -1,8 +1,7 @@
-use gitpub_core::{Database, Repository, User};
+use gitpub_core::{Repository, User};
 
 mod helpers;
 use helpers::TestDatabase;
-use testcontainers::clients::Cli;
 
 #[test]
 fn test_repository_creation() {
@@ -58,8 +57,7 @@ fn test_multiple_users_have_unique_ids() {
 
 #[tokio::test]
 async fn test_database_connection() {
-    let docker = Cli::default();
-    let test_db = TestDatabase::new(&docker).await;
+    let test_db = TestDatabase::new().await;
 
     let query_result = sqlx::query("SELECT 1").fetch_one(test_db.db.pool()).await;
     assert!(query_result.is_ok());

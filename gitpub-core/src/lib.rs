@@ -227,12 +227,17 @@ mod tests {
 
     #[tokio::test]
     async fn test_database_migrations() {
-        use testcontainers::clients::Cli;
+        use testcontainers::*;
         use testcontainers_modules::postgres::Postgres;
 
-        let docker = Cli::default();
-        let container = docker.run(Postgres::default());
-        let port = container.get_host_port_ipv4(5432);
+        let container = Postgres::default()
+            .start()
+            .await
+            .expect("Failed to start Postgres container");
+        let port = container
+            .get_host_port_ipv4(5432)
+            .await
+            .expect("Failed to get port");
         let db_url = format!("postgresql://postgres:postgres@localhost:{}/postgres", port);
 
         let db = Database::new(&db_url).await;

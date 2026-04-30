@@ -1,16 +1,16 @@
 use gitpub_core::Database;
-use testcontainers::{clients::Cli, Container};
+use testcontainers::*;
 use testcontainers_modules::postgres::Postgres;
 
-pub struct TestDatabase<'a> {
-    _container: Container<'a, Postgres>,
+pub struct TestDatabase {
+    _container: ContainerAsync<Postgres>,
     pub db: Database,
 }
 
-impl<'a> TestDatabase<'a> {
-    pub async fn new(docker: &'a Cli) -> Self {
-        let container = docker.run(Postgres::default());
-        let port = container.get_host_port_ipv4(5432);
+impl TestDatabase {
+    pub async fn new() -> Self {
+        let container = Postgres::default().start().await.expect("Failed to start Postgres container");
+        let port = container.get_host_port_ipv4(5432).await.expect("Failed to get port");
         let db_url = format!("postgresql://postgres:postgres@localhost:{}/postgres", port);
 
         let db = Database::new(&db_url)
