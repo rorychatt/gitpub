@@ -3,6 +3,14 @@ name = "gitpub-server"
 version = "0.1.0"
 edition = "2021"
 
+[lib]
+name = "gitpub_server"
+path = "src/lib.rs"
+
+[[bin]]
+name = "gitpub-server"
+path = "src/main.rs"
+
 [dependencies]
 gitpub-core = { path = "../gitpub-core" }
 tokio = { workspace = true }

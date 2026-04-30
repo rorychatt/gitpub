@@ -5,22 +5,21 @@ use axum::{
 };
 use gitpub_core::Database;
 use std::sync::Arc;
-use testcontainers::{clients::Cli, core::WaitFor, GenericImage};
+use testcontainers::{core::{ContainerPort, WaitFor}, runners::AsyncRunner, GenericImage, ImageExt};
 use tower::ServiceExt;
 
-async fn setup_test_db() -> (Cli, testcontainers::Container<'static, GenericImage>, Database) {
-    let docker = Cli::default();
+async fn setup_test_db() -> (testcontainers::ContainerAsync<GenericImage>, Database) {
     let postgres_image = GenericImage::new("postgres", "16-alpine")
-        .with_exposed_port(5432)
-        .with_env_var("POSTGRES_USER", "postgres")
-        .with_env_var("POSTGRES_PASSWORD", "postgres")
-        .with_env_var("POSTGRES_DB", "gitpub_test")
+        .with_exposed_port(ContainerPort::Tcp(5432))
         .with_wait_for(WaitFor::message_on_stderr(
             "database system is ready to accept connections",
-        ));
+        ))
+        .with_env_var("POSTGRES_USER", "postgres")
+        .with_env_var("POSTGRES_PASSWORD", "postgres")
+        .with_env_var("POSTGRES_DB", "gitpub_test");
 
-    let container = docker.run(postgres_image);
-    let port = container.get_host_port_ipv4(5432);
+    let container = postgres_image.start().await.expect("Failed to start container");
+    let port = container.get_host_port_ipv4(5432).await.expect("Failed to get port");
     let db_url = format!("postgresql://postgres:postgres@127.0.0.1:{}/gitpub_test", port);
 
     tokio::time::sleep(tokio::time::Duration::from_secs(2)).await;
@@ -29,7 +28,7 @@ async fn setup_test_db() -> (Cli, testcontainers::Container<'static, GenericImag
         .await
         .expect("Failed to connect to test database");
 
-    (docker, container, db)
+    (container, db)
 }
 
 fn create_test_app(db: Arc<Database>) -> Router {
@@ -155,8 +154,9 @@ fn create_test_app(db: Arc<Database>) -> Router {
 
 #[tokio::test]
 async fn test_register_persists_to_database() {
-    let (_docker, _container, db) = setup_test_db().await;
-    let app = create_test_app(Arc::new(db.clone()));
+    let (_container, db) = setup_test_db().await;
+    let db_arc = Arc::new(db);
+    let app = create_test_app(db_arc.clone());
 
     let body = serde_json::json!({
         "username": "newuser",
@@ -179,7 +179,7 @@ async fn test_register_persists_to_database() {
 
     assert_eq!(response.status(), StatusCode::CREATED);
 
-    let user_in_db = db
+    let user_in_db = db_arc
         .get_user_by_username("newuser")
         .await
         .expect("Query should succeed");
@@ -192,8 +192,9 @@ async fn test_register_persists_to_database() {
 
 #[tokio::test]
 async fn test_register_duplicate_username_returns_conflict() {
-    let (_docker, _container, db) = setup_test_db().await;
-    let app = create_test_app(Arc::new(db));
+    let (_container, db) = setup_test_db().await;
+    let db_arc = Arc::new(db);
+    let app = create_test_app(db_arc.clone());
 
     let body1 = serde_json::json!({
         "username": "duplicate",
@@ -238,8 +239,9 @@ async fn test_register_duplicate_username_returns_conflict() {
 
 #[tokio::test]
 async fn test_register_duplicate_email_returns_conflict() {
-    let (_docker, _container, db) = setup_test_db().await;
-    let app = create_test_app(Arc::new(db));
+    let (_container, db) = setup_test_db().await;
+    let db_arc = Arc::new(db);
+    let app = create_test_app(db_arc.clone());
 
     let body1 = serde_json::json!({
         "username": "user1",
@@ -284,34 +286,32 @@ async fn test_register_duplicate_email_returns_conflict() {
 
 #[tokio::test]
 async fn test_concurrent_registrations_same_username() {
-    let (_docker, _container, db) = setup_test_db().await;
-    let app_arc = Arc::new(create_test_app(Arc::new(db)));
+    let (_container, db) = setup_test_db().await;
+    let db_arc = Arc::new(db);
 
-    let body = serde_json::json!({
+    let body1_str = serde_json::to_string(&serde_json::json!({
         "username": "concurrent_user",
         "email": "concurrent1@example.com",
         "password": "password123"
-    });
+    })).unwrap();
 
-    let body2 = serde_json::json!({
+    let body2_str = serde_json::to_string(&serde_json::json!({
         "username": "concurrent_user",
         "email": "concurrent2@example.com",
         "password": "password456"
-    });
+    })).unwrap();
 
-    let app1 = app_arc.clone();
-    let app2 = app_arc.clone();
-    let body_str1 = serde_json::to_string(&body).unwrap();
-    let body_str2 = serde_json::to_string(&body2).unwrap();
+    let db1 = db_arc.clone();
+    let db2 = db_arc.clone();
 
     let handle1 = tokio::spawn(async move {
-        app1.clone()
+        create_test_app(db1)
             .oneshot(
                 Request::builder()
                     .method("POST")
                     .uri("/api/auth/register")
                     .header("content-type", "application/json")
-                    .body(Body::from(body_str1))
+                    .body(Body::from(body1_str))
                     .unwrap(),
             )
             .await
@@ -319,13 +319,13 @@ async fn test_concurrent_registrations_same_username() {
     });
 
     let handle2 = tokio::spawn(async move {
-        app2.clone()
+        create_test_app(db2)
             .oneshot(
                 Request::builder()
                     .method("POST")
                     .uri("/api/auth/register")
                     .header("content-type", "application/json")
-                    .body(Body::from(body_str2))
+                    .body(Body::from(body2_str))
                     .unwrap(),
             )
             .await
@@ -346,8 +346,9 @@ async fn test_concurrent_registrations_same_username() {
 
 #[tokio::test]
 async fn test_sql_injection_username() {
-    let (_docker, _container, db) = setup_test_db().await;
-    let app = create_test_app(Arc::new(db));
+    let (_container, db) = setup_test_db().await;
+    let db_arc = Arc::new(db);
+    let app = create_test_app(db_arc.clone());
 
     let body = serde_json::json!({
         "username": "'; DROP TABLE users; --",
@@ -376,8 +377,9 @@ async fn test_sql_injection_username() {
 
 #[tokio::test]
 async fn test_sql_injection_email() {
-    let (_docker, _container, db) = setup_test_db().await;
-    let app = create_test_app(Arc::new(db));
+    let (_container, db) = setup_test_db().await;
+    let db_arc = Arc::new(db);
+    let app = create_test_app(db_arc.clone());
 
     let body = serde_json::json!({
         "username": "normaluser",
@@ -406,8 +408,9 @@ async fn test_sql_injection_email() {
 
 #[tokio::test]
 async fn test_login_after_registration() {
-    let (_docker, _container, db) = setup_test_db().await;
-    let app = create_test_app(Arc::new(db));
+    let (_container, db) = setup_test_db().await;
+    let db_arc = Arc::new(db);
+    let app = create_test_app(db_arc.clone());
 
     let register_body = serde_json::json!({
         "username": "loginuser",

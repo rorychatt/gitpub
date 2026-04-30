@@ -1,26 +1,25 @@
 use gitpub_core::{Database, Repository, User};
-use testcontainers::{clients::Cli, core::WaitFor, GenericImage};
+use testcontainers::{core::{ContainerPort, WaitFor}, runners::AsyncRunner, GenericImage, ImageExt};
 
-async fn setup_test_db() -> (Cli, testcontainers::Container<'static, GenericImage>, Database) {
-    let docker = Cli::default();
+async fn setup_test_db() -> (testcontainers::ContainerAsync<GenericImage>, Database) {
     let postgres_image = GenericImage::new("postgres", "16-alpine")
-        .with_exposed_port(5432)
-        .with_env_var("POSTGRES_USER", "postgres")
-        .with_env_var("POSTGRES_PASSWORD", "postgres")
-        .with_env_var("POSTGRES_DB", "gitpub_test")
+        .with_exposed_port(ContainerPort::Tcp(5432))
         .with_wait_for(WaitFor::message_on_stderr(
             "database system is ready to accept connections",
-        ));
+        ))
+        .with_env_var("POSTGRES_USER", "postgres")
+        .with_env_var("POSTGRES_PASSWORD", "postgres")
+        .with_env_var("POSTGRES_DB", "gitpub_test");
 
-    let container = docker.run(postgres_image);
-    let port = container.get_host_port_ipv4(5432);
+    let container = postgres_image.start().await.expect("Failed to start container");
+    let port = container.get_host_port_ipv4(5432).await.expect("Failed to get port");
     let db_url = format!("postgresql://postgres:postgres@127.0.0.1:{}/gitpub_test", port);
 
     tokio::time::sleep(tokio::time::Duration::from_secs(2)).await;
 
     let db = Database::new(&db_url).await.expect("Failed to connect to test database");
 
-    (docker, container, db)
+    (container, db)
 }
 
 #[test]
@@ -65,7 +64,7 @@ fn test_multiple_users_have_unique_ids() {
 
 #[tokio::test]
 async fn test_user_insert_and_retrieve() {
-    let (_docker, _container, db) = setup_test_db().await;
+    let (_container, db) = setup_test_db().await;
 
     let user = User::new("testuser".to_string(), "test@example.com".to_string(), "hash123".to_string());
     db.insert_user(&user).await.expect("Failed to insert user");
@@ -80,7 +79,7 @@ async fn test_user_insert_and_retrieve() {
 
 #[tokio::test]
 async fn test_duplicate_username_constraint() {
-    let (_docker, _container, db) = setup_test_db().await;
+    let (_container, db) = setup_test_db().await;
 
     let user1 = User::new("testuser".to_string(), "test1@example.com".to_string(), "hash1".to_string());
     db.insert_user(&user1).await.expect("Failed to insert first user");
@@ -93,7 +92,7 @@ async fn test_duplicate_username_constraint() {
 
 #[tokio::test]
 async fn test_duplicate_email_constraint() {
-    let (_docker, _container, db) = setup_test_db().await;
+    let (_container, db) = setup_test_db().await;
 
     let user1 = User::new("testuser1".to_string(), "test@example.com".to_string(), "hash1".to_string());
     db.insert_user(&user1).await.expect("Failed to insert first user");
@@ -106,7 +105,7 @@ async fn test_duplicate_email_constraint() {
 
 #[tokio::test]
 async fn test_repository_persistence() {
-    let (_docker, _container, db) = setup_test_db().await;
+    let (_container, db) = setup_test_db().await;
 
     let mut repo = Repository::new("test-repo".to_string(), "test-owner".to_string());
     repo.description = Some("A test repository".to_string());
