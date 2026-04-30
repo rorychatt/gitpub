@@ -64,6 +64,12 @@ pub struct Database {
 impl Database {
     pub async fn new(database_url: &str) -> Result<Self> {
         let pool = sqlx::PgPool::connect(database_url).await?;
+
+        // Run migrations
+        sqlx::migrate!("./migrations")
+            .run(&pool)
+            .await?;
+
         Ok(Self { pool })
     }
 
@@ -90,5 +96,14 @@ mod tests {
         let user = User::new("testuser".to_string(), "test@example.com".to_string());
         assert_eq!(user.username, "testuser");
         assert_eq!(user.email, "test@example.com");
+    }
+
+    #[tokio::test]
+    async fn test_database_migrations() {
+        // Requires a test database URL in environment
+        if let Ok(db_url) = std::env::var("DATABASE_URL") {
+            let db = Database::new(&db_url).await;
+            assert!(db.is_ok(), "Database migrations should run successfully");
+        }
     }
 }
