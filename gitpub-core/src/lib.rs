@@ -588,8 +588,8 @@ mod tests {
     #[tokio::test]
     #[ignore]
     async fn test_insert_and_get_user() {
-        let database_url = std::env::var("DATABASE_URL")
-            .expect("DATABASE_URL must be set for integration tests");
+        let database_url =
+            std::env::var("DATABASE_URL").expect("DATABASE_URL must be set for integration tests");
         let db = Database::new(&database_url).await.unwrap();
 
         let user = User::new(
@@ -615,8 +615,8 @@ mod tests {
     #[tokio::test]
     #[ignore]
     async fn test_insert_and_get_repository() {
-        let database_url = std::env::var("DATABASE_URL")
-            .expect("DATABASE_URL must be set for integration tests");
+        let database_url =
+            std::env::var("DATABASE_URL").expect("DATABASE_URL must be set for integration tests");
         let db = Database::new(&database_url).await.unwrap();
 
         let user = User::new(
@@ -648,8 +648,8 @@ mod tests {
     #[tokio::test]
     #[ignore]
     async fn test_list_users_pagination() {
-        let database_url = std::env::var("DATABASE_URL")
-            .expect("DATABASE_URL must be set for integration tests");
+        let database_url =
+            std::env::var("DATABASE_URL").expect("DATABASE_URL must be set for integration tests");
         let db = Database::new(&database_url).await.unwrap();
 
         for i in 0..5 {
@@ -671,8 +671,8 @@ mod tests {
     #[tokio::test]
     #[ignore]
     async fn test_list_repositories_by_owner() {
-        let database_url = std::env::var("DATABASE_URL")
-            .expect("DATABASE_URL must be set for integration tests");
+        let database_url =
+            std::env::var("DATABASE_URL").expect("DATABASE_URL must be set for integration tests");
         let db = Database::new(&database_url).await.unwrap();
 
         let user1 = User::new(
@@ -705,8 +705,8 @@ mod tests {
     #[tokio::test]
     #[ignore]
     async fn test_get_nonexistent_records() {
-        let database_url = std::env::var("DATABASE_URL")
-            .expect("DATABASE_URL must be set for integration tests");
+        let database_url =
+            std::env::var("DATABASE_URL").expect("DATABASE_URL must be set for integration tests");
         let db = Database::new(&database_url).await.unwrap();
 
         let user = db.get_user_by_id("nonexistent-id").await.unwrap();
