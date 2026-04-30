@@ -1,4 +1,6 @@
 use anyhow::Result;
+use reqwest_middleware::{ClientBuilder, ClientWithMiddleware};
+use reqwest_retry::{policies::ExponentialBackoff, RetryTransientMiddleware};
 use serde::{Deserialize, Serialize};
 use std::time::Duration;
 
@@ -6,17 +8,30 @@ use std::time::Duration;
 pub struct SliplaneClient {
     api_url: String,
     api_key: Option<String>,
-    client: reqwest::Client,
+    client: ClientWithMiddleware,
 }
 
 impl SliplaneClient {
     pub fn new(api_url: String) -> Self {
+        // Configure retry policy: max 3 retries with exponential backoff
+        // Initial delay: 1s, max delay: 10s
+        let retry_policy = ExponentialBackoff::builder()
+            .retry_bounds(
+                std::time::Duration::from_secs(1),
+                std::time::Duration::from_secs(10),
+            )
+            .build_with_max_retries(3);
+
         // Use default timeouts: 10s connect, 30s request
-        let client = reqwest::ClientBuilder::new()
+        let base_client = reqwest::ClientBuilder::new()
             .connect_timeout(Duration::from_secs(10))
             .timeout(Duration::from_secs(30))
             .build()
             .expect("Failed to build HTTP client with default timeouts");
+
+        let client = ClientBuilder::new(base_client)
+            .with(RetryTransientMiddleware::new_with_policy(retry_policy))
+            .build();
 
         Self {
             api_url,
@@ -35,11 +50,24 @@ impl SliplaneClient {
         connect_timeout: Duration,
         request_timeout: Duration,
     ) -> Self {
-        let client = reqwest::ClientBuilder::new()
+        // Configure retry policy: max 3 retries with exponential backoff
+        // Initial delay: 1s, max delay: 10s
+        let retry_policy = ExponentialBackoff::builder()
+            .retry_bounds(
+                std::time::Duration::from_secs(1),
+                std::time::Duration::from_secs(10),
+            )
+            .build_with_max_retries(3);
+
+        let base_client = reqwest::ClientBuilder::new()
             .connect_timeout(connect_timeout)
             .timeout(request_timeout)
             .build()
             .expect("Failed to build HTTP client with custom timeouts");
+
+        let client = ClientBuilder::new(base_client)
+            .with(RetryTransientMiddleware::new_with_policy(retry_policy))
+            .build();
 
         Self {
             api_url,
@@ -302,6 +330,130 @@ mod tests {
         Mock::given(method("POST"))
             .and(path("/deployments"))
             .respond_with(ResponseTemplate::new(201).set_body_string("invalid json"))
+            .mount(&mock_server)
+            .await;
+
+        let client = SliplaneClient::new(mock_server.uri()).with_api_key("test-key".to_string());
+
+        let config = DeploymentConfig {
+            repository_name: "test-repo".to_string(),
+            branch: "main".to_string(),
+            environment: Environment::Development,
+            auto_scale: true,
+        };
+
+        let result = client.deploy(&config).await;
+        assert!(result.is_err());
+    }
+
+    #[tokio::test]
+    async fn test_deploy_with_retry_on_500_error() {
+        use wiremock::matchers::{method, path};
+        use wiremock::{Mock, MockServer, ResponseTemplate};
+
+        let mock_server = MockServer::start().await;
+
+        // First two requests fail with 500, third succeeds
+        Mock::given(method("POST"))
+            .and(path("/deployments"))
+            .respond_with(
+                ResponseTemplate::new(500)
+                    .set_body_string("Internal Server Error")
+                    .insert_header("content-type", "text/plain"),
+            )
+            .up_to_n_times(2)
+            .mount(&mock_server)
+            .await;
+
+        Mock::given(method("POST"))
+            .and(path("/deployments"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+                "deployment_id": "test-123",
+                "status": "Pending",
+                "url": null
+            })))
+            .mount(&mock_server)
+            .await;
+
+        let client = SliplaneClient::new(mock_server.uri()).with_api_key("test-key".to_string());
+
+        let config = DeploymentConfig {
+            repository_name: "test-repo".to_string(),
+            branch: "main".to_string(),
+            environment: Environment::Development,
+            auto_scale: true,
+        };
+
+        let result = client.deploy(&config).await;
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap().deployment_id, "test-123");
+    }
+
+    #[tokio::test]
+    async fn test_deploy_with_retry_on_connection_failure() {
+        // Use an unreachable port to simulate connection failure
+        let client = SliplaneClient::new("http://localhost:1".to_string())
+            .with_api_key("test-key".to_string());
+
+        let config = DeploymentConfig {
+            repository_name: "test-repo".to_string(),
+            branch: "main".to_string(),
+            environment: Environment::Development,
+            auto_scale: true,
+        };
+
+        let result = client.deploy(&config).await;
+        // Should fail after retries
+        assert!(result.is_err());
+    }
+
+    #[tokio::test]
+    async fn test_get_deployment_status_with_retry() {
+        use wiremock::matchers::{method, path};
+        use wiremock::{Mock, MockServer, ResponseTemplate};
+
+        let mock_server = MockServer::start().await;
+
+        // First request fails with 503, second succeeds
+        Mock::given(method("GET"))
+            .and(path("/deployments/test-123/status"))
+            .respond_with(
+                ResponseTemplate::new(503)
+                    .set_body_string("Service Unavailable")
+                    .insert_header("content-type", "text/plain"),
+            )
+            .up_to_n_times(1)
+            .mount(&mock_server)
+            .await;
+
+        Mock::given(method("GET"))
+            .and(path("/deployments/test-123/status"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!("Running")))
+            .mount(&mock_server)
+            .await;
+
+        let client = SliplaneClient::new(mock_server.uri()).with_api_key("test-key".to_string());
+
+        let result = client.get_deployment_status("test-123").await;
+        assert!(result.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_no_retry_on_4xx_errors() {
+        use wiremock::matchers::{method, path};
+        use wiremock::{Mock, MockServer, ResponseTemplate};
+
+        let mock_server = MockServer::start().await;
+
+        // 404 should not be retried
+        Mock::given(method("POST"))
+            .and(path("/deployments"))
+            .respond_with(
+                ResponseTemplate::new(404)
+                    .set_body_string("Not Found")
+                    .insert_header("content-type", "text/plain"),
+            )
+            .expect(1) // Should only be called once (no retries)
             .mount(&mock_server)
             .await;
 
