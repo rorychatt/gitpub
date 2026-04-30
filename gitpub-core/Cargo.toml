@@ -19,7 +19,9 @@ test-utils = ["mockall"]
 
 [dev-dependencies]
 tokio-test = { workspace = true }
+tempfile = { workspace = true }
 mockall = { workspace = true }
 rstest = { workspace = true }
 assert_matches = { workspace = true }
 testcontainers = { workspace = true }
+testcontainers-modules = { version = "0.11", features = ["postgres"] }
