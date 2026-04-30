@@ -187,7 +187,10 @@ async fn refresh_token(
 
     let mut tokens = state.refresh_tokens.write().await;
     tokens.remove(&req.refresh_token);
-    tokens.insert(new_refresh_token.token_id.clone(), new_refresh_token.clone());
+    tokens.insert(
+        new_refresh_token.token_id.clone(),
+        new_refresh_token.clone(),
+    );
     drop(tokens);
 
     Ok(Json(auth::LoginResponse {
