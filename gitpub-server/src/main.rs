@@ -1,4 +1,4 @@
-mod auth;
+pub mod auth;
 
 use axum::{
     extract::State,
@@ -78,6 +78,7 @@ async fn register(
     }
     drop(users);
 
+    auth::validate_password_strength(&req.password)?;
     let password_hash = auth::hash_password(&req.password)?;
     let user = User::new(req.username.clone(), req.email.clone(), password_hash);
 
