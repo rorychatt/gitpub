@@ -157,11 +157,12 @@ async fn refresh(
     State(state): State<Arc<AppState>>,
     Json(req): Json<auth::RefreshRequest>,
 ) -> Result<Json<auth::RefreshResponse>, auth::AuthError> {
-    let refresh_token_hash = auth::hash_refresh_token(&req.refresh_token)?;
-
     let refresh_tokens = state.refresh_tokens.read().await;
+
+    // Find the token by verifying against all stored hashes
     let token_record = refresh_tokens
-        .get(&refresh_token_hash)
+        .values()
+        .find(|t| auth::verify_refresh_token(&req.refresh_token, &t.token_hash).unwrap_or(false))
         .ok_or(auth::AuthError::InvalidRefreshToken)?;
 
     if token_record.is_expired() {
@@ -191,15 +192,21 @@ async fn logout(
     State(state): State<Arc<AppState>>,
     Json(req): Json<auth::RefreshRequest>,
 ) -> Result<StatusCode, auth::AuthError> {
-    let refresh_token_hash = auth::hash_refresh_token(&req.refresh_token)?;
-
     let mut refresh_tokens = state.refresh_tokens.write().await;
 
-    if let Some(token_record) = refresh_tokens.get_mut(&refresh_token_hash) {
-        let now = chrono::Utc::now().timestamp();
-        let mut updated_record = token_record.clone();
-        updated_record.revoked_at = Some(now);
-        refresh_tokens.insert(refresh_token_hash, updated_record);
+    // Find the token by verifying against all stored hashes
+    let token_hash = refresh_tokens
+        .iter()
+        .find(|(_, t)| auth::verify_refresh_token(&req.refresh_token, &t.token_hash).unwrap_or(false))
+        .map(|(hash, _)| hash.clone());
+
+    if let Some(hash) = token_hash {
+        if let Some(token_record) = refresh_tokens.get_mut(&hash) {
+            let now = chrono::Utc::now().timestamp();
+            let mut updated_record = token_record.clone();
+            updated_record.revoked_at = Some(now);
+            refresh_tokens.insert(hash, updated_record);
+        }
     }
 
     Ok(StatusCode::NO_CONTENT)
