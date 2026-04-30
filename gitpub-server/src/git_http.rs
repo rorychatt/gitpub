@@ -5,10 +5,12 @@ use axum::{
     response::{IntoResponse, Response},
 };
 use serde::Deserialize;
+use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::Arc;
 use tokio::io::AsyncWriteExt;
 use tokio::process::Command;
+use tokio::sync::RwLock;
 
 use crate::AppState;
 
@@ -187,7 +189,10 @@ mod tests {
     }
 
     fn test_app(repos_path: PathBuf) -> Router {
-        let state = Arc::new(AppState { repos_path });
+        let state = Arc::new(AppState {
+            users: Arc::new(RwLock::new(HashMap::new())),
+            repos_path,
+        });
         Router::new()
             .route("/:owner/:repo/info/refs", get(handle_info_refs))
             .route("/:owner/:repo/git-upload-pack", post(handle_upload_pack))

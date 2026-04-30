@@ -61,7 +61,7 @@ pub struct RegisterRequest {
     pub password: String,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct RegisterResponse {
     pub message: String,
 }
