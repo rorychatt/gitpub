@@ -1,7 +1,6 @@
 use axum::{extract::State, routing::get, Json, Router};
 use serde::Serialize;
 use std::sync::Arc;
-use tracing_subscriber;
 
 #[derive(Clone)]
 struct AppState {}

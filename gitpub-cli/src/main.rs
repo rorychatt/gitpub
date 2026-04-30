@@ -54,8 +54,8 @@ fn main() -> Result<()> {
             Ok(())
         }
         Commands::Clone { url, directory } => {
-            let target =
-                directory.unwrap_or_else(|| url.split('/').last().unwrap_or("repo").to_string());
+            let target = directory
+                .unwrap_or_else(|| url.split('/').next_back().unwrap_or("repo").to_string());
             println!("Cloning {} to {}", url, target);
             // TODO: Implement repository cloning
             Ok(())
@@ -81,7 +81,7 @@ mod tests {
     fn test_cli_parsing() {
         // Basic test that CLI parsing works
         let result = std::panic::catch_unwind(|| {
-            Cli::parse_from(&["gitpub", "init", "test-repo"]);
+            Cli::parse_from(["gitpub", "init", "test-repo"]);
         });
         assert!(result.is_ok());
     }
