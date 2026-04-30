@@ -182,8 +182,8 @@ mod tests {
     #[tokio::test]
     async fn test_deploy_with_retry_on_connection_failure() {
         // Use an unreachable port to simulate connection failure
-        let client =
-            SliplaneClient::new("http://localhost:1".to_string()).with_api_key("test-key".to_string());
+        let client = SliplaneClient::new("http://localhost:1".to_string())
+            .with_api_key("test-key".to_string());
 
         let config = DeploymentConfig {
             repository_name: "test-repo".to_string(),
@@ -218,9 +218,7 @@ mod tests {
 
         Mock::given(method("GET"))
             .and(path("/deployments/test-123/status"))
-            .respond_with(
-                ResponseTemplate::new(200).set_body_json(serde_json::json!("Running")),
-            )
+            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!("Running")))
             .mount(&mock_server)
             .await;
 
