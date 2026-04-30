@@ -94,7 +94,8 @@ async fn register(
         .expect("valid timestamp")
         .timestamp();
 
-    let refresh_token_record = RefreshToken::new(user.id.clone(), refresh_token_hash.clone(), expires_at);
+    let refresh_token_record =
+        RefreshToken::new(user.id.clone(), refresh_token_hash.clone(), expires_at);
 
     let mut users = state.users.write().await;
     users.insert(req.username.clone(), user.clone());
@@ -137,7 +138,8 @@ async fn login(
         .expect("valid timestamp")
         .timestamp();
 
-    let refresh_token_record = RefreshToken::new(user.id.clone(), refresh_token_hash.clone(), expires_at);
+    let refresh_token_record =
+        RefreshToken::new(user.id.clone(), refresh_token_hash.clone(), expires_at);
 
     let mut refresh_tokens = state.refresh_tokens.write().await;
     refresh_tokens.insert(refresh_token_hash, refresh_token_record);

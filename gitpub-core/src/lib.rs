@@ -119,13 +119,14 @@ impl Database {
         token_hash: &str,
         expires_at: i64,
     ) -> Result<RefreshToken> {
-        let refresh_token = RefreshToken::new(user_id.to_string(), token_hash.to_string(), expires_at);
+        let refresh_token =
+            RefreshToken::new(user_id.to_string(), token_hash.to_string(), expires_at);
 
         sqlx::query(
             r#"
             INSERT INTO refresh_tokens (id, user_id, token_hash, expires_at, created_at)
             VALUES ($1, $2, $3, $4, $5)
-            "#
+            "#,
         )
         .bind(&refresh_token.id)
         .bind(&refresh_token.user_id)
@@ -144,7 +145,7 @@ impl Database {
             SELECT id, user_id, token_hash, expires_at, created_at, last_used_at, revoked_at
             FROM refresh_tokens
             WHERE token_hash = $1
-            "#
+            "#,
         )
         .bind(token_hash)
         .fetch_optional(&self.pool)
@@ -160,7 +161,7 @@ impl Database {
             UPDATE refresh_tokens
             SET last_used_at = $1
             WHERE token_hash = $2
-            "#
+            "#,
         )
         .bind(now)
         .bind(token_hash)
@@ -177,7 +178,7 @@ impl Database {
             UPDATE refresh_tokens
             SET revoked_at = $1
             WHERE token_hash = $2
-            "#
+            "#,
         )
         .bind(now)
         .bind(token_hash)
@@ -193,7 +194,7 @@ impl Database {
             r#"
             DELETE FROM refresh_tokens
             WHERE expires_at < $1
-            "#
+            "#,
         )
         .bind(now)
         .execute(&self.pool)
