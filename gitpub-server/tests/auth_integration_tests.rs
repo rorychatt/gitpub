@@ -5,7 +5,11 @@ use axum::{
 };
 use gitpub_core::Database;
 use std::sync::Arc;
-use testcontainers::{core::{ContainerPort, WaitFor}, runners::AsyncRunner, GenericImage, ImageExt};
+use testcontainers::{
+    core::{ContainerPort, WaitFor},
+    runners::AsyncRunner,
+    GenericImage, ImageExt,
+};
 use tower::ServiceExt;
 
 async fn setup_test_db() -> (testcontainers::ContainerAsync<GenericImage>, Database) {
@@ -18,9 +22,18 @@ async fn setup_test_db() -> (testcontainers::ContainerAsync<GenericImage>, Datab
         .with_env_var("POSTGRES_PASSWORD", "postgres")
         .with_env_var("POSTGRES_DB", "gitpub_test");
 
-    let container = postgres_image.start().await.expect("Failed to start container");
-    let port = container.get_host_port_ipv4(5432).await.expect("Failed to get port");
-    let db_url = format!("postgresql://postgres:postgres@127.0.0.1:{}/gitpub_test", port);
+    let container = postgres_image
+        .start()
+        .await
+        .expect("Failed to start container");
+    let port = container
+        .get_host_port_ipv4(5432)
+        .await
+        .expect("Failed to get port");
+    let db_url = format!(
+        "postgresql://postgres:postgres@127.0.0.1:{}/gitpub_test",
+        port
+    );
 
     tokio::time::sleep(tokio::time::Duration::from_secs(2)).await;
 
@@ -67,7 +80,10 @@ fn create_test_app(db: Arc<Database>) -> Router {
     async fn register(
         State(state): State<Arc<AppState>>,
         Json(req): Json<gitpub_server::auth::RegisterRequest>,
-    ) -> Result<(AxumStatusCode, Json<gitpub_server::auth::LoginResponse>), gitpub_server::auth::AuthError> {
+    ) -> Result<
+        (AxumStatusCode, Json<gitpub_server::auth::LoginResponse>),
+        gitpub_server::auth::AuthError,
+    > {
         if let Ok(Some(_)) = state.db.get_user_by_username(&req.username).await {
             return Err(gitpub_server::auth::AuthError::UserAlreadyExists);
         }
@@ -80,7 +96,9 @@ fn create_test_app(db: Arc<Database>) -> Router {
         let user = User::new(req.username.clone(), req.email.clone(), password_hash);
 
         state.db.insert_user(&user).await.map_err(|e| {
-            if e.to_string().contains("duplicate key") || e.to_string().contains("UNIQUE constraint") {
+            if e.to_string().contains("duplicate key")
+                || e.to_string().contains("UNIQUE constraint")
+            {
                 gitpub_server::auth::AuthError::UserAlreadyExists
             } else {
                 gitpub_server::auth::AuthError::InternalError
@@ -293,13 +311,15 @@ async fn test_concurrent_registrations_same_username() {
         "username": "concurrent_user",
         "email": "concurrent1@example.com",
         "password": "password123"
-    })).unwrap();
+    }))
+    .unwrap();
 
     let body2_str = serde_json::to_string(&serde_json::json!({
         "username": "concurrent_user",
         "email": "concurrent2@example.com",
         "password": "password456"
-    })).unwrap();
+    }))
+    .unwrap();
 
     let db1 = db_arc.clone();
     let db2 = db_arc.clone();

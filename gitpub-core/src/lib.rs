@@ -242,7 +242,11 @@ mod tests {
             .expect("TEST_DATABASE_URL must be set for integration tests");
         let db = Database::new(&database_url).await.unwrap();
 
-        let user = User::new("testuser".to_string(), "test@example.com".to_string(), "hash123".to_string());
+        let user = User::new(
+            "testuser".to_string(),
+            "test@example.com".to_string(),
+            "hash123".to_string(),
+        );
         db.insert_user(&user).await.unwrap();
 
         let fetched_by_id = db.get_user_by_id(&user.id).await.unwrap();
@@ -265,7 +269,11 @@ mod tests {
             .expect("TEST_DATABASE_URL must be set for integration tests");
         let db = Database::new(&database_url).await.unwrap();
 
-        let user = User::new("repoowner".to_string(), "owner@example.com".to_string(), "hash123".to_string());
+        let user = User::new(
+            "repoowner".to_string(),
+            "owner@example.com".to_string(),
+            "hash123".to_string(),
+        );
         db.insert_user(&user).await.unwrap();
 
         let mut repo = Repository::new("test-repo".to_string(), user.id.clone());
@@ -295,7 +303,11 @@ mod tests {
         let db = Database::new(&database_url).await.unwrap();
 
         for i in 0..5 {
-            let user = User::new(format!("user{}", i), format!("user{}@example.com", i), "hash".to_string());
+            let user = User::new(
+                format!("user{}", i),
+                format!("user{}@example.com", i),
+                "hash".to_string(),
+            );
             db.insert_user(&user).await.unwrap();
         }
 
@@ -313,8 +325,16 @@ mod tests {
             .expect("TEST_DATABASE_URL must be set for integration tests");
         let db = Database::new(&database_url).await.unwrap();
 
-        let user1 = User::new("owner1".to_string(), "owner1@example.com".to_string(), "hash1".to_string());
-        let user2 = User::new("owner2".to_string(), "owner2@example.com".to_string(), "hash2".to_string());
+        let user1 = User::new(
+            "owner1".to_string(),
+            "owner1@example.com".to_string(),
+            "hash1".to_string(),
+        );
+        let user2 = User::new(
+            "owner2".to_string(),
+            "owner2@example.com".to_string(),
+            "hash2".to_string(),
+        );
         db.insert_user(&user1).await.unwrap();
         db.insert_user(&user2).await.unwrap();
 

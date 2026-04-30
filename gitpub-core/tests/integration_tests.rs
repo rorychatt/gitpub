@@ -1,5 +1,9 @@
 use gitpub_core::{Database, Repository, User};
-use testcontainers::{core::{ContainerPort, WaitFor}, runners::AsyncRunner, GenericImage, ImageExt};
+use testcontainers::{
+    core::{ContainerPort, WaitFor},
+    runners::AsyncRunner,
+    GenericImage, ImageExt,
+};
 
 async fn setup_test_db() -> (testcontainers::ContainerAsync<GenericImage>, Database) {
     let postgres_image = GenericImage::new("postgres", "16-alpine")
@@ -11,13 +15,24 @@ async fn setup_test_db() -> (testcontainers::ContainerAsync<GenericImage>, Datab
         .with_env_var("POSTGRES_PASSWORD", "postgres")
         .with_env_var("POSTGRES_DB", "gitpub_test");
 
-    let container = postgres_image.start().await.expect("Failed to start container");
-    let port = container.get_host_port_ipv4(5432).await.expect("Failed to get port");
-    let db_url = format!("postgresql://postgres:postgres@127.0.0.1:{}/gitpub_test", port);
+    let container = postgres_image
+        .start()
+        .await
+        .expect("Failed to start container");
+    let port = container
+        .get_host_port_ipv4(5432)
+        .await
+        .expect("Failed to get port");
+    let db_url = format!(
+        "postgresql://postgres:postgres@127.0.0.1:{}/gitpub_test",
+        port
+    );
 
     tokio::time::sleep(tokio::time::Duration::from_secs(2)).await;
 
-    let db = Database::new(&db_url).await.expect("Failed to connect to test database");
+    let db = Database::new(&db_url)
+        .await
+        .expect("Failed to connect to test database");
 
     (container, db)
 }
@@ -41,7 +56,11 @@ fn test_repository_with_description() {
 
 #[test]
 fn test_user_creation() {
-    let user = User::new("testuser".to_string(), "test@example.com".to_string(), "hash123".to_string());
+    let user = User::new(
+        "testuser".to_string(),
+        "test@example.com".to_string(),
+        "hash123".to_string(),
+    );
     assert_eq!(user.username, "testuser");
     assert_eq!(user.email, "test@example.com");
     assert_eq!(user.password_hash, "hash123");
@@ -57,8 +76,16 @@ fn test_multiple_repositories_have_unique_ids() {
 
 #[test]
 fn test_multiple_users_have_unique_ids() {
-    let user1 = User::new("user1".to_string(), "user1@example.com".to_string(), "hash1".to_string());
-    let user2 = User::new("user2".to_string(), "user2@example.com".to_string(), "hash2".to_string());
+    let user1 = User::new(
+        "user1".to_string(),
+        "user1@example.com".to_string(),
+        "hash1".to_string(),
+    );
+    let user2 = User::new(
+        "user2".to_string(),
+        "user2@example.com".to_string(),
+        "hash2".to_string(),
+    );
     assert_ne!(user1.id, user2.id);
 }
 
@@ -66,7 +93,11 @@ fn test_multiple_users_have_unique_ids() {
 async fn test_user_insert_and_retrieve() {
     let (_container, db) = setup_test_db().await;
 
-    let user = User::new("testuser".to_string(), "test@example.com".to_string(), "hash123".to_string());
+    let user = User::new(
+        "testuser".to_string(),
+        "test@example.com".to_string(),
+        "hash123".to_string(),
+    );
     db.insert_user(&user).await.expect("Failed to insert user");
 
     let fetched = db.get_user_by_id(&user.id).await.expect("Query failed");
@@ -81,10 +112,20 @@ async fn test_user_insert_and_retrieve() {
 async fn test_duplicate_username_constraint() {
     let (_container, db) = setup_test_db().await;
 
-    let user1 = User::new("testuser".to_string(), "test1@example.com".to_string(), "hash1".to_string());
-    db.insert_user(&user1).await.expect("Failed to insert first user");
+    let user1 = User::new(
+        "testuser".to_string(),
+        "test1@example.com".to_string(),
+        "hash1".to_string(),
+    );
+    db.insert_user(&user1)
+        .await
+        .expect("Failed to insert first user");
 
-    let user2 = User::new("testuser".to_string(), "test2@example.com".to_string(), "hash2".to_string());
+    let user2 = User::new(
+        "testuser".to_string(),
+        "test2@example.com".to_string(),
+        "hash2".to_string(),
+    );
     let result = db.insert_user(&user2).await;
 
     assert!(result.is_err(), "Expected duplicate username to fail");
@@ -94,10 +135,20 @@ async fn test_duplicate_username_constraint() {
 async fn test_duplicate_email_constraint() {
     let (_container, db) = setup_test_db().await;
 
-    let user1 = User::new("testuser1".to_string(), "test@example.com".to_string(), "hash1".to_string());
-    db.insert_user(&user1).await.expect("Failed to insert first user");
+    let user1 = User::new(
+        "testuser1".to_string(),
+        "test@example.com".to_string(),
+        "hash1".to_string(),
+    );
+    db.insert_user(&user1)
+        .await
+        .expect("Failed to insert first user");
 
-    let user2 = User::new("testuser2".to_string(), "test@example.com".to_string(), "hash2".to_string());
+    let user2 = User::new(
+        "testuser2".to_string(),
+        "test@example.com".to_string(),
+        "hash2".to_string(),
+    );
     let result = db.insert_user(&user2).await;
 
     assert!(result.is_err(), "Expected duplicate email to fail");
@@ -111,9 +162,14 @@ async fn test_repository_persistence() {
     repo.description = Some("A test repository".to_string());
     repo.is_private = true;
 
-    db.insert_repository(&repo).await.expect("Failed to insert repository");
+    db.insert_repository(&repo)
+        .await
+        .expect("Failed to insert repository");
 
-    let fetched = db.get_repository_by_id(&repo.id).await.expect("Query failed");
+    let fetched = db
+        .get_repository_by_id(&repo.id)
+        .await
+        .expect("Query failed");
     assert!(fetched.is_some());
     let fetched = fetched.unwrap();
     assert_eq!(fetched.name, "test-repo");

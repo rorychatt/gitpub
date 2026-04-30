@@ -25,9 +25,7 @@ async fn main() -> anyhow::Result<()> {
         .unwrap_or_else(|_| "postgresql://postgres:postgres@localhost/gitpub".to_string());
     let db = Database::new(&database_url).await?;
 
-    let state = Arc::new(AppState {
-        db: Arc::new(db),
-    });
+    let state = Arc::new(AppState { db: Arc::new(db) });
 
     let app = Router::new()
         .route("/health", get(health_check))
@@ -110,7 +108,9 @@ async fn login(
     State(state): State<Arc<AppState>>,
     Json(req): Json<auth::LoginRequest>,
 ) -> Result<Json<auth::LoginResponse>, auth::AuthError> {
-    let user = state.db.get_user_by_username(&req.username)
+    let user = state
+        .db
+        .get_user_by_username(&req.username)
         .await
         .map_err(|_| auth::AuthError::InternalError)?
         .ok_or(auth::AuthError::InvalidCredentials)?;
@@ -132,7 +132,9 @@ async fn get_current_user(
     State(state): State<Arc<AppState>>,
     auth: auth::RequireAuth,
 ) -> Result<Json<auth::UserInfo>, auth::AuthError> {
-    let user = state.db.get_user_by_username(&auth.claims.username)
+    let user = state
+        .db
+        .get_user_by_username(&auth.claims.username)
         .await
         .map_err(|_| auth::AuthError::InternalError)?
         .ok_or(auth::AuthError::InvalidToken)?;
