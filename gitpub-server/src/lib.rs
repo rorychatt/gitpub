@@ -2,15 +2,23 @@ pub mod auth;
 pub mod rate_limit;
 
 use axum::{extract::State, routing::get, Json, Router};
+use gitpub_core::User;
 use serde::Serialize;
-use std::sync::Arc;
+use std::{collections::HashMap, path::PathBuf, sync::Arc};
+use tokio::sync::RwLock;
 
-#[derive(Clone, Default)]
-pub struct AppState {}
+#[derive(Clone)]
+pub struct AppState {
+    pub users: Arc<RwLock<HashMap<String, User>>>,
+    pub repos_path: PathBuf,
+}
 
 impl AppState {
     pub fn new() -> Self {
-        Self {}
+        Self {
+            users: Arc::new(RwLock::new(HashMap::new())),
+            repos_path: PathBuf::from("/var/lib/gitpub/repos"),
+        }
     }
 }
 
