@@ -3,6 +3,7 @@ use clap::{Parser, Subcommand};
 #[derive(Parser, Debug)]
 #[command(name = "gitpub")]
 #[command(about = "A CLI for interacting with gitpub repositories", long_about = None)]
+#[command(version)]
 struct Cli {
     #[command(subcommand)]
     command: Commands,
@@ -43,9 +44,11 @@ fn test_cli_help() {
 
 #[test]
 fn test_cli_version() {
+    // Version flag causes clap to exit with DisplayVersion error
     let result = Cli::try_parse_from(["gitpub", "--version"]);
-    // Version flag is not configured, so this will be treated as unknown argument
     assert!(result.is_err());
+    let err = result.unwrap_err();
+    assert_eq!(err.kind(), clap::error::ErrorKind::DisplayVersion);
 }
 
 #[test]

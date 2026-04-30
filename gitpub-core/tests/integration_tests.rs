@@ -41,12 +41,12 @@ fn test_multiple_users_have_unique_ids() {
     let user1 = User::new(
         "user1".to_string(),
         "user1@example.com".to_string(),
-        "hashed_password".to_string(),
+        "password1".to_string(),
     );
     let user2 = User::new(
         "user2".to_string(),
         "user2@example.com".to_string(),
-        "hashed_password".to_string(),
+        "password2".to_string(),
     );
     assert_ne!(user1.id, user2.id);
 }
