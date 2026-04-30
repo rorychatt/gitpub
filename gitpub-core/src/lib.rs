@@ -54,6 +54,7 @@ pub struct Commit {
     pub message: String,
     pub author: String,
     pub timestamp: i64,
+    pub repository_id: String,
 }
 
 /// Database connection manager
