@@ -12,9 +12,10 @@ pub fn test_user(username: &str, email: &str) -> User {
     )
 }
 
-pub fn test_commit(sha: &str, message: &str) -> Commit {
+pub fn test_commit(sha: &str, message: &str, repository_id: &str) -> Commit {
     Commit {
         sha: sha.to_string(),
+        repository_id: repository_id.to_string(),
         message: message.to_string(),
         author: "test-author".to_string(),
         timestamp: chrono::Utc::now().timestamp(),
