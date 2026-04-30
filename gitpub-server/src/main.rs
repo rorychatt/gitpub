@@ -1,4 +1,5 @@
 mod auth;
+mod git_http;
 
 use axum::{
     extract::State,
@@ -8,12 +9,13 @@ use axum::{
 };
 use gitpub_core::User;
 use serde::Serialize;
-use std::{collections::HashMap, sync::Arc};
+use std::{collections::HashMap, path::PathBuf, sync::Arc};
 use tokio::sync::RwLock;
 
 #[derive(Clone)]
 struct AppState {
     users: Arc<RwLock<HashMap<String, User>>>,
+    repos_path: PathBuf,
 }
 
 #[tokio::main]
@@ -22,8 +24,13 @@ async fn main() -> anyhow::Result<()> {
 
     auth::get_jwt_secret().expect("JWT_SECRET must be set and at least 32 bytes");
 
+    let repos_path = std::env::var("GITPUB_REPOS_PATH")
+        .map(PathBuf::from)
+        .unwrap_or_else(|_| PathBuf::from("/var/lib/gitpub/repos"));
+
     let state = Arc::new(AppState {
         users: Arc::new(RwLock::new(HashMap::new())),
+        repos_path,
     });
 
     let app = Router::new()
@@ -32,6 +39,15 @@ async fn main() -> anyhow::Result<()> {
         .route("/api/auth/login", post(login))
         .route("/api/auth/me", get(get_current_user))
         .route("/api/repositories", get(list_repositories))
+        .route("/:owner/:repo/info/refs", get(git_http::handle_info_refs))
+        .route(
+            "/:owner/:repo/git-upload-pack",
+            post(git_http::handle_upload_pack),
+        )
+        .route(
+            "/:owner/:repo/git-receive-pack",
+            post(git_http::handle_receive_pack),
+        )
         .with_state(state);
 
     let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await?;
@@ -144,6 +160,7 @@ mod tests {
 
         let state = Arc::new(AppState {
             users: Arc::new(RwLock::new(HashMap::new())),
+            repos_path: PathBuf::from("/tmp/test-repos"),
         });
 
         Router::new()

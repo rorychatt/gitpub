@@ -49,6 +49,7 @@ jobs:
       run: cargo test --verbose --all-features
       env:
         DATABASE_URL: postgresql://postgres:postgres@localhost/gitpub_test
+        JWT_SECRET: test_secret_key_that_is_at_least_32_bytes_long_for_ci
 
     - name: Run doc tests
       run: cargo test --doc --all-features
