@@ -1,17 +1,21 @@
-use anyhow::{anyhow, Result};
 use axum::{
     async_trait,
     extract::FromRequestParts,
     http::{request::Parts, StatusCode},
     response::{IntoResponse, Response},
-    Json,
+    Json, RequestPartsExt,
+};
+use axum_extra::{
+    headers::{authorization::Bearer, Authorization},
+    TypedHeader,
 };
 use gitpub_core::User;
 use jsonwebtoken::{decode, encode, DecodingKey, EncodingKey, Header, Validation};
 use serde::{Deserialize, Serialize};
-use std::env;
+use std::fmt;
 
-const JWT_EXPIRATION_HOURS: i64 = 24;
+const JWT_SECRET_ENV: &str = "JWT_SECRET";
+const TOKEN_EXPIRATION_HOURS: i64 = 24;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Claims {
@@ -20,18 +24,119 @@ pub struct Claims {
     pub exp: i64,
 }
 
-pub fn create_jwt(user_id: &str, username: &str) -> Result<String> {
-    let secret =
-        env::var("JWT_SECRET").map_err(|_| anyhow!("JWT_SECRET environment variable not set"))?;
+#[derive(Debug, Deserialize)]
+pub struct LoginRequest {
+    pub username: String,
+    pub password: String,
+}
 
+#[derive(Debug, Serialize, Deserialize)]
+pub struct LoginResponse {
+    pub token: String,
+    pub user: UserInfo,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct UserInfo {
+    pub id: String,
+    pub username: String,
+    pub email: String,
+}
+
+impl From<User> for UserInfo {
+    fn from(user: User) -> Self {
+        Self {
+            id: user.id,
+            username: user.username,
+            email: user.email,
+        }
+    }
+}
+
+#[derive(Debug, Deserialize)]
+pub struct RegisterRequest {
+    pub username: String,
+    pub email: String,
+    pub password: String,
+}
+
+#[derive(Debug)]
+pub enum AuthError {
+    InvalidCredentials,
+    TokenExpired,
+    InvalidToken,
+    UserAlreadyExists,
+    MissingToken,
+    HashingError,
+    JwtSecretMissing,
+    JwtSecretTooShort,
+}
+
+impl fmt::Display for AuthError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            AuthError::InvalidCredentials => write!(f, "Invalid credentials"),
+            AuthError::TokenExpired => write!(f, "Token expired"),
+            AuthError::InvalidToken => write!(f, "Invalid token"),
+            AuthError::UserAlreadyExists => write!(f, "User already exists"),
+            AuthError::MissingToken => write!(f, "Missing authorization token"),
+            AuthError::HashingError => write!(f, "Password hashing failed"),
+            AuthError::JwtSecretMissing => write!(f, "JWT_SECRET environment variable not set"),
+            AuthError::JwtSecretTooShort => {
+                write!(f, "JWT_SECRET must be at least 32 bytes")
+            }
+        }
+    }
+}
+
+impl std::error::Error for AuthError {}
+
+impl IntoResponse for AuthError {
+    fn into_response(self) -> Response {
+        let (status, message) = match self {
+            AuthError::InvalidCredentials => (StatusCode::UNAUTHORIZED, self.to_string()),
+            AuthError::TokenExpired => (StatusCode::UNAUTHORIZED, self.to_string()),
+            AuthError::InvalidToken => (StatusCode::UNAUTHORIZED, self.to_string()),
+            AuthError::MissingToken => (StatusCode::UNAUTHORIZED, self.to_string()),
+            AuthError::UserAlreadyExists => (StatusCode::CONFLICT, self.to_string()),
+            AuthError::HashingError => (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "Internal error".to_string(),
+            ),
+            AuthError::JwtSecretMissing => (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "Configuration error".to_string(),
+            ),
+            AuthError::JwtSecretTooShort => (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "Configuration error".to_string(),
+            ),
+        };
+
+        (status, Json(serde_json::json!({ "error": message }))).into_response()
+    }
+}
+
+pub fn get_jwt_secret() -> Result<String, AuthError> {
+    let secret = std::env::var(JWT_SECRET_ENV).map_err(|_| AuthError::JwtSecretMissing)?;
+
+    if secret.len() < 32 {
+        return Err(AuthError::JwtSecretTooShort);
+    }
+
+    Ok(secret)
+}
+
+pub fn generate_jwt(user: &User) -> Result<String, AuthError> {
+    let secret = get_jwt_secret()?;
     let expiration = chrono::Utc::now()
-        .checked_add_signed(chrono::Duration::hours(JWT_EXPIRATION_HOURS))
-        .ok_or_else(|| anyhow!("Failed to calculate expiration time"))?
+        .checked_add_signed(chrono::Duration::hours(TOKEN_EXPIRATION_HOURS))
+        .expect("valid timestamp")
         .timestamp();
 
     let claims = Claims {
-        user_id: user_id.to_string(),
-        username: username.to_string(),
+        user_id: user.id.clone(),
+        username: user.username.clone(),
         exp: expiration,
     };
 
@@ -40,70 +145,47 @@ pub fn create_jwt(user_id: &str, username: &str) -> Result<String> {
         &claims,
         &EncodingKey::from_secret(secret.as_bytes()),
     )
-    .map_err(|e| anyhow!("Failed to create JWT: {}", e))
+    .map_err(|_| AuthError::InvalidToken)
 }
 
-pub fn validate_jwt(token: &str) -> Result<Claims> {
-    let secret =
-        env::var("JWT_SECRET").map_err(|_| anyhow!("JWT_SECRET environment variable not set"))?;
+pub fn validate_jwt(token: &str) -> Result<Claims, AuthError> {
+    let secret = get_jwt_secret()?;
 
-    let token_data = decode::<Claims>(
+    decode::<Claims>(
         token,
         &DecodingKey::from_secret(secret.as_bytes()),
         &Validation::default(),
     )
-    .map_err(|e| anyhow!("Failed to validate JWT: {}", e))?;
-
-    Ok(token_data.claims)
+    .map(|data| data.claims)
+    .map_err(|err| {
+        if err.to_string().contains("ExpiredSignature") {
+            AuthError::TokenExpired
+        } else {
+            AuthError::InvalidToken
+        }
+    })
 }
 
-pub struct AuthUser(pub User);
+pub struct RequireAuth {
+    pub claims: Claims,
+}
 
 #[async_trait]
-impl<S> FromRequestParts<S> for AuthUser
+impl<S> FromRequestParts<S> for RequireAuth
 where
     S: Send + Sync,
 {
     type Rejection = AuthError;
 
     async fn from_request_parts(parts: &mut Parts, _state: &S) -> Result<Self, Self::Rejection> {
-        let auth_header = parts
-            .headers
-            .get("Authorization")
-            .and_then(|h| h.to_str().ok())
-            .ok_or(AuthError::MissingToken)?;
+        let TypedHeader(Authorization(bearer)) = parts
+            .extract::<TypedHeader<Authorization<Bearer>>>()
+            .await
+            .map_err(|_| AuthError::MissingToken)?;
 
-        let token = auth_header
-            .strip_prefix("Bearer ")
-            .ok_or(AuthError::InvalidToken)?;
+        let claims = validate_jwt(bearer.token())?;
 
-        let claims = validate_jwt(token).map_err(|_| AuthError::InvalidToken)?;
-
-        let user = User {
-            id: claims.user_id,
-            username: claims.username,
-            email: String::new(),
-            password_hash: String::new(),
-            created_at: 0,
-        };
-
-        Ok(AuthUser(user))
-    }
-}
-
-pub enum AuthError {
-    MissingToken,
-    InvalidToken,
-}
-
-impl IntoResponse for AuthError {
-    fn into_response(self) -> Response {
-        let (status, message) = match self {
-            AuthError::MissingToken => (StatusCode::UNAUTHORIZED, "Missing authorization token"),
-            AuthError::InvalidToken => (StatusCode::UNAUTHORIZED, "Invalid authorization token"),
-        };
-
-        (status, Json(serde_json::json!({ "error": message }))).into_response()
+        Ok(RequireAuth { claims })
     }
 }
 
@@ -112,64 +194,69 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_create_jwt_valid_token() {
-        env::set_var("JWT_SECRET", "test_secret_key_at_least_32_characters_long");
-        let result = create_jwt("user123", "testuser");
-        assert!(result.is_ok());
-        let token = result.unwrap();
+    fn test_generate_jwt_creates_valid_token() {
+        std::env::set_var(
+            JWT_SECRET_ENV,
+            "test_secret_key_that_is_at_least_32_bytes_long",
+        );
+
+        let user = User::new(
+            "testuser".to_string(),
+            "test@example.com".to_string(),
+            "hash123".to_string(),
+        );
+
+        let token = generate_jwt(&user).expect("JWT generation should succeed");
         assert!(!token.is_empty());
+        assert!(token.split('.').count() == 3);
     }
 
     #[test]
-    fn test_validate_jwt_valid_token() {
-        env::set_var("JWT_SECRET", "test_secret_key_at_least_32_characters_long");
-        let token = create_jwt("user123", "testuser").expect("Failed to create JWT");
-        let result = validate_jwt(&token);
-        assert!(result.is_ok());
-        let claims = result.unwrap();
-        assert_eq!(claims.user_id, "user123");
-        assert_eq!(claims.username, "testuser");
+    fn test_validate_jwt_accepts_valid_token() {
+        std::env::set_var(
+            JWT_SECRET_ENV,
+            "test_secret_key_that_is_at_least_32_bytes_long",
+        );
+
+        let user = User::new(
+            "testuser".to_string(),
+            "test@example.com".to_string(),
+            "hash123".to_string(),
+        );
+
+        let token = generate_jwt(&user).expect("JWT generation should succeed");
+        let claims = validate_jwt(&token).expect("JWT validation should succeed");
+
+        assert_eq!(claims.user_id, user.id);
+        assert_eq!(claims.username, user.username);
     }
 
     #[test]
-    fn test_validate_jwt_invalid_signature() {
-        env::set_var("JWT_SECRET", "test_secret_key_at_least_32_characters_long");
+    fn test_validate_jwt_rejects_invalid_token() {
+        std::env::set_var(
+            JWT_SECRET_ENV,
+            "test_secret_key_that_is_at_least_32_bytes_long",
+        );
 
-        let claims = Claims {
-            user_id: "user123".to_string(),
-            username: "testuser".to_string(),
-            exp: chrono::Utc::now().timestamp() + 3600,
-        };
-
-        let token = encode(
-            &Header::default(),
-            &claims,
-            &EncodingKey::from_secret(b"different_secret_key_at_least_32_characters"),
-        )
-        .expect("Failed to create token with wrong secret");
-
-        let result = validate_jwt(&token);
+        let result = validate_jwt("invalid.token.here");
         assert!(result.is_err());
     }
 
     #[test]
-    fn test_validate_jwt_expired_token() {
-        env::set_var("JWT_SECRET", "test_secret_key_at_least_32_characters_long");
+    fn test_jwt_secret_validation() {
+        std::env::remove_var(JWT_SECRET_ENV);
+        assert!(matches!(get_jwt_secret(), Err(AuthError::JwtSecretMissing)));
 
-        let expired_claims = Claims {
-            user_id: "user123".to_string(),
-            username: "testuser".to_string(),
-            exp: chrono::Utc::now().timestamp() - 3600,
-        };
+        std::env::set_var(JWT_SECRET_ENV, "short");
+        assert!(matches!(
+            get_jwt_secret(),
+            Err(AuthError::JwtSecretTooShort)
+        ));
 
-        let token = encode(
-            &Header::default(),
-            &expired_claims,
-            &EncodingKey::from_secret(b"test_secret_key_at_least_32_characters_long"),
-        )
-        .expect("Failed to create expired token");
-
-        let result = validate_jwt(&token);
-        assert!(result.is_err());
+        std::env::set_var(
+            JWT_SECRET_ENV,
+            "this_is_a_valid_secret_that_is_at_least_32_bytes",
+        );
+        assert!(get_jwt_secret().is_ok());
     }
 }

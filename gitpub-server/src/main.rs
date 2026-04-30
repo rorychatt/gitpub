@@ -10,7 +10,7 @@ use std::{env, sync::Arc};
 mod auth;
 mod routes;
 
-use auth::AuthUser;
+use auth::RequireAuth;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
@@ -58,10 +58,10 @@ struct RepositoryInfo {
 }
 
 async fn list_repositories(
-    AuthUser(user): AuthUser,
+    RequireAuth { claims }: RequireAuth,
     State(_db): State<Arc<Database>>,
 ) -> Json<RepositoryListResponse> {
-    tracing::info!("Listing repositories for user: {}", user.username);
+    tracing::info!("Listing repositories for user: {}", claims.username);
     Json(RepositoryListResponse {
         repositories: vec![],
     })
@@ -115,7 +115,12 @@ mod tests {
             Err(_) => return,
         };
 
-        let token = auth::create_jwt("user123", "testuser").expect("Failed to create JWT");
+        let user = gitpub_core::User::new(
+            "testuser".to_string(),
+            "test@example.com".to_string(),
+            "hash123".to_string(),
+        );
+        let token = auth::generate_jwt(&user).expect("Failed to create JWT");
 
         let app = Router::new()
             .route("/api/repositories", get(list_repositories))

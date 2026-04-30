@@ -19,3 +19,10 @@ tower-http = { version = "0.5", features = ["cors"] }
 chrono = "0.4"
 tower = { version = "0.4", features = ["util"] }
 http-body-util = "0.1"
+
+[dev-dependencies]
+tokio-test = { workspace = true }
+mockall = { workspace = true }
+rstest = { workspace = true }
+assert_matches = { workspace = true }
+axum-test = "15"
