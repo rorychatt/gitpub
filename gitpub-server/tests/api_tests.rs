@@ -193,10 +193,7 @@ mod rate_limit_tests {
             "password": "password123"
         });
 
-        let response = server
-            .post("/api/auth/register")
-            .json(&register_body)
-            .await;
+        let response = server.post("/api/auth/register").json(&register_body).await;
         response.assert_status(StatusCode::CREATED);
 
         let login_body = serde_json::json!({
@@ -234,10 +231,7 @@ mod rate_limit_tests {
                 "password": "password123"
             });
 
-            let response = server
-                .post("/api/auth/register")
-                .json(&register_body)
-                .await;
+            let response = server.post("/api/auth/register").json(&register_body).await;
             assert_eq!(
                 response.status_code(),
                 StatusCode::CREATED,
@@ -252,10 +246,7 @@ mod rate_limit_tests {
             "password": "password123"
         });
 
-        let response = server
-            .post("/api/auth/register")
-            .json(&register_body)
-            .await;
+        let response = server.post("/api/auth/register").json(&register_body).await;
         assert_eq!(
             response.status_code(),
             StatusCode::TOO_MANY_REQUESTS,
@@ -274,10 +265,7 @@ mod rate_limit_tests {
                 "password": "password123"
             });
 
-            let response = server
-                .post("/api/auth/register")
-                .json(&register_body)
-                .await;
+            let response = server.post("/api/auth/register").json(&register_body).await;
             assert_eq!(response.status_code(), StatusCode::CREATED);
         }
 
@@ -287,10 +275,7 @@ mod rate_limit_tests {
             "password": "password123"
         });
 
-        let response = server
-            .post("/api/auth/register")
-            .json(&register_body)
-            .await;
+        let response = server.post("/api/auth/register").json(&register_body).await;
         assert_eq!(response.status_code(), StatusCode::TOO_MANY_REQUESTS);
 
         tokio::time::sleep(Duration::from_secs(13)).await;
@@ -301,10 +286,7 @@ mod rate_limit_tests {
             "password": "password123"
         });
 
-        let response = server
-            .post("/api/auth/register")
-            .json(&register_body)
-            .await;
+        let response = server.post("/api/auth/register").json(&register_body).await;
         assert_eq!(
             response.status_code(),
             StatusCode::CREATED,
