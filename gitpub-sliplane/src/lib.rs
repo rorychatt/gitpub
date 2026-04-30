@@ -76,18 +76,18 @@ mod tests {
     #[test]
     fn test_client_creation() {
         let client = SliplaneClient::new("https://api.sliplane.io".to_string());
-        assert_eq!(client.api_url, "https://api.sliplane.io");
+        assert_eq!(client._api_url, "https://api.sliplane.io");
     }
 
     #[test]
     fn test_client_with_api_key() {
         let client = SliplaneClient::new("https://api.sliplane.io".to_string())
             .with_api_key("test-key".to_string());
-        assert_eq!(client.api_key, Some("test-key".to_string()));
+        assert_eq!(client._api_key, Some("test-key".to_string()));
     }
 
-    #[tokio::test]
-    async fn test_deployment_config() {
+    #[test]
+    fn test_deployment_config() {
         let config = DeploymentConfig {
             repository_name: "test-repo".to_string(),
             branch: "main".to_string(),
