@@ -21,6 +21,7 @@ governor = "0.6.3"
 axum-extra = { version = "0.9.4", features = ["typed-header"] }
 chrono = { workspace = true }
 zxcvbn = "3.1.0"
+uuid = { workspace = true }
 base64 = "0.22"
 
 [dev-dependencies]

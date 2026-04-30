@@ -178,6 +178,8 @@ mod tests {
     use axum::routing::{get, post};
     use axum::Router;
     use http_body_util::BodyExt;
+    use std::collections::HashMap;
+    use tokio::sync::RwLock;
     use tower::ServiceExt;
 
     fn create_test_repo(base: &std::path::Path) -> PathBuf {

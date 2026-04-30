@@ -61,6 +61,21 @@ pub struct RegisterRequest {
     pub password: String,
 }
 
+#[derive(Debug, Serialize, Deserialize)]
+pub struct RegisterResponse {
+    pub message: String,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct VerifyEmailRequest {
+    pub token: String,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct ResendVerificationRequest {
+    pub email: String,
+}
+
 #[derive(Debug)]
 #[allow(dead_code)]
 pub enum AuthError {
@@ -72,7 +87,13 @@ pub enum AuthError {
     HashingError,
     JwtSecretMissing,
     JwtSecretTooShort,
+<<<<<<< HEAD
     PasswordTooWeak(String),
+=======
+    InvalidVerificationToken,
+    VerificationTokenExpired,
+    EmailNotVerified,
+>>>>>>> origin/main
     Forbidden,
 }
 
@@ -89,7 +110,18 @@ impl fmt::Display for AuthError {
             AuthError::JwtSecretTooShort => {
                 write!(f, "JWT_SECRET must be at least 32 bytes")
             }
+<<<<<<< HEAD
             AuthError::PasswordTooWeak(msg) => write!(f, "{}", msg),
+=======
+            AuthError::InvalidVerificationToken => {
+                write!(f, "Invalid or expired verification token")
+            }
+            AuthError::VerificationTokenExpired => write!(f, "Verification token has expired"),
+            AuthError::EmailNotVerified => write!(
+                f,
+                "Email address not verified. Please check your email for verification link."
+            ),
+>>>>>>> origin/main
             AuthError::Forbidden => write!(f, "Forbidden"),
         }
     }
@@ -118,6 +150,9 @@ impl IntoResponse for AuthError {
                 StatusCode::INTERNAL_SERVER_ERROR,
                 "Configuration error".to_string(),
             ),
+            AuthError::InvalidVerificationToken => (StatusCode::BAD_REQUEST, self.to_string()),
+            AuthError::VerificationTokenExpired => (StatusCode::BAD_REQUEST, self.to_string()),
+            AuthError::EmailNotVerified => (StatusCode::FORBIDDEN, self.to_string()),
             AuthError::Forbidden => (StatusCode::FORBIDDEN, self.to_string()),
         };
 
