@@ -227,7 +227,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_database_migrations() {
-        use testcontainers::*;
+        use testcontainers::runners::AsyncRunner;
         use testcontainers_modules::postgres::Postgres;
 
         let container = Postgres::default()
