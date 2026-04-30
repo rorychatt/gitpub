@@ -19,4 +19,9 @@ axum-extra = { version = "0.9.4", features = ["typed-header"] }
 chrono = { workspace = true }
 
 [dev-dependencies]
+tokio-test = { workspace = true }
+mockall = { workspace = true }
+rstest = { workspace = true }
+assert_matches = { workspace = true }
+axum-test = "15"
 tower = { version = "0.5.2", features = ["util"] }
