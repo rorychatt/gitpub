@@ -53,6 +53,7 @@ impl User {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Commit {
     pub sha: String,
+    pub repository_id: String,
     pub message: String,
     pub author: String,
     pub timestamp: i64,
