@@ -35,6 +35,12 @@ pub struct User {
     pub email: String,
     pub password_hash: String,
     pub created_at: i64,
+    #[serde(default)]
+    pub email_verified: bool,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub verification_token: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub verification_token_expires_at: Option<i64>,
 }
 
 impl User {
@@ -45,7 +51,16 @@ impl User {
             email,
             password_hash,
             created_at: chrono::Utc::now().timestamp(),
+            email_verified: false,
+            verification_token: None,
+            verification_token_expires_at: None,
         }
+    }
+
+    pub fn with_verification_token(mut self, token: String, expires_at: i64) -> Self {
+        self.verification_token = Some(token);
+        self.verification_token_expires_at = Some(expires_at);
+        self
     }
 }
 

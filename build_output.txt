@@ -1,0 +1,895 @@
+    Updating crates.io index
+    Blocking waiting for file lock on package cache
+     Locking 419 packages to latest compatible versions
+      Adding axum v0.7.9 (available: v0.8.9)
+      Adding axum-extra v0.9.6 (available: v0.12.6)
+      Adding axum-test v15.7.4 (available: v20.0.0)
+      Adding bcrypt v0.15.1 (available: v0.19.0)
+      Adding generic-array v0.14.7 (available: v0.14.9)
+      Adding git2 v0.18.3 (available: v0.20.4)
+      Adding jsonwebtoken v9.3.1 (available: v10.3.0)
+      Adding mockall v0.13.1 (available: v0.14.0)
+      Adding reqwest v0.11.27 (available: v0.13.3)
+      Adding rstest v0.23.0 (available: v0.26.1)
+      Adding sqlx v0.7.4 (available: v0.8.6)
+      Adding testcontainers v0.23.3 (available: v0.27.3)
+    Blocking waiting for file lock on package cache
+    Blocking waiting for file lock on package cache
+   Compiling proc-macro2 v1.0.106
+   Compiling quote v1.0.45
+   Compiling unicode-ident v1.0.24
+   Compiling cfg-if v1.0.4
+   Compiling windows-link v0.2.1
+   Compiling pin-project-lite v0.2.17
+   Compiling bytes v1.11.1
+   Compiling futures-core v0.3.32
+   Compiling itoa v1.0.18
+   Compiling memchr v2.8.0
+   Compiling version_check v0.9.5
+   Compiling once_cell v1.21.4
+   Compiling parking_lot_core v0.9.12
+   Compiling smallvec v1.15.1
+   Compiling scopeguard v1.2.0
+   Compiling getrandom v0.3.4
+   Compiling stable_deref_trait v1.2.1
+   Compiling serde_core v1.0.228
+   Compiling futures-io v0.3.32
+   Compiling futures-task v0.3.32
+   Compiling futures-sink v0.3.32
+   Compiling equivalent v1.0.2
+   Compiling hashbrown v0.17.0
+   Compiling slab v0.4.12
+   Compiling litemap v0.8.2
+   Compiling log v0.4.29
+   Compiling serde v1.0.228
+   Compiling writeable v0.6.3
+   Compiling utf8_iter v1.0.4
+   Compiling icu_normalizer_data v2.2.0
+   Compiling typenum v1.20.0
+   Compiling icu_properties_data v2.2.0
+   Compiling lock_api v0.4.14
+   Compiling shlex v1.3.0
+   Compiling subtle v2.6.1
+   Compiling find-msvc-tools v0.1.9
+   Compiling windows-sys v0.61.2
+   Compiling futures-channel v0.3.32
+   Compiling tracing-core v0.1.36
+   Compiling zerocopy v0.8.48
+   Compiling getrandom v0.2.17
+   Compiling autocfg v1.5.0
+   Compiling zmij v1.0.21
+   Compiling percent-encoding v2.3.2
+   Compiling serde_json v1.0.149
+   Compiling windows_x86_64_msvc v0.48.5
+   Compiling indexmap v2.14.0
+   Compiling libc v0.2.186
+   Compiling generic-array v0.14.7
+   Compiling ahash v0.8.12
+   Compiling fnv v1.0.7
+   Compiling http v1.4.0
+   Compiling native-tls v0.2.18
+   Compiling cpufeatures v0.2.17
+   Compiling httparse v1.10.1
+   Compiling tower-service v0.3.3
+   Compiling allocator-api2 v0.2.21
+   Compiling thiserror v1.0.69
+   Compiling num-traits v0.2.19
+   Compiling rand_core v0.6.4
+   Compiling pkg-config v0.3.33
+   Compiling httpdate v1.0.3
+   Compiling hex v0.4.3
+   Compiling form_urlencoded v1.2.2
+   Compiling try-lock v0.2.5
+   Compiling crossbeam-utils v0.8.21
+   Compiling vcpkg v0.2.15
+   Compiling want v0.3.1
+   Compiling byteorder v1.5.0
+   Compiling paste v1.0.15
+   Compiling socket2 v0.6.3
+   Compiling mio v1.2.0
+   Compiling schannel v0.1.29
+   Compiling minimal-lexical v0.2.1
+   Compiling tinyvec_macros v0.1.1
+   Compiling unicode_categories v0.1.1
+   Compiling crc-catalog v2.5.0
+   Compiling nom v7.1.3
+   Compiling tinyvec v1.11.0
+   Compiling crc v3.4.0
+   Compiling http-body v1.0.1
+   Compiling bitflags v2.11.1
+   Compiling event-listener v2.5.3
+   Compiling getrandom v0.4.2
+   Compiling crossbeam-queue v0.3.12
+   Compiling tokio v1.52.1
+   Compiling unicode-normalization v0.1.25
+   Compiling jobserver v0.1.34
+   Compiling unicode-bidi v0.3.18
+   Compiling unicode-properties v0.1.4
+   Compiling ppv-lite86 v0.2.21
+   Compiling windows-targets v0.48.5
+   Compiling base64 v0.21.7
+   Compiling parking_lot v0.12.5
+   Compiling atomic-waker v1.1.2
+   Compiling cc v1.2.61
+   Compiling hashbrown v0.14.5
+   Compiling windows-sys v0.48.0
+   Compiling futures-util v0.3.32
+   Compiling sqlformat v0.2.6
+   Compiling home v0.5.12
+   Compiling crypto-common v0.1.7
+   Compiling block-buffer v0.10.4
+   Compiling rand_chacha v0.3.1
+   Compiling stringprep v0.1.5
+   Compiling strsim v0.11.1
+   Compiling fastrand v2.4.1
+   Compiling syn v1.0.109
+   Compiling whoami v1.6.1
+   Compiling dotenvy v0.15.7
+   Compiling aho-corasick v1.1.4
+   Compiling digest v0.10.7
+   Compiling syn v2.0.117
+   Compiling hashlink v0.8.4
+   Compiling futures-intrusive v0.5.0
+   Compiling rand v0.8.6
+   Compiling etcetera v0.8.0
+   Compiling unicode-segmentation v1.13.2
+   Compiling regex-syntax v0.8.10
+   Compiling atoi v2.0.0
+   Compiling anstyle v1.0.14
+   Compiling anyhow v1.0.102
+   Compiling zeroize v1.8.2
+   Compiling ryu v1.0.23
+   Compiling mime v0.3.17
+   Compiling base64 v0.22.1
+   Compiling hmac v0.12.1
+   Compiling sha2 v0.10.9
+   Compiling md-5 v0.10.6
+   Compiling tokio-stream v0.1.18
+   Compiling hkdf v0.12.4
+   Compiling heck v0.4.1
+   Compiling tempfile v3.27.0
+   Compiling http-body-util v0.1.3
+   Compiling winnow v1.0.2
+   Compiling thiserror v2.0.18
+   Compiling untrusted v0.9.0
+   Compiling semver v1.0.28
+   Compiling uuid v1.23.1
+   Compiling rustls-pki-types v1.14.1
+   Compiling chrono v0.4.44
+   Compiling http v0.2.12
+   Compiling toml_datetime v1.1.1+spec-1.1.0
+   Compiling ident_case v1.0.1
+   Compiling regex-automata v0.4.14
+   Compiling mockall_derive v0.13.1
+   Compiling predicates-core v1.0.10
+   Compiling relative-path v1.9.3
+   Compiling termtree v0.5.1
+   Compiling windows_x86_64_msvc v0.52.6
+   Compiling glob v0.3.3
+   Compiling rustls v0.23.40
+   Compiling fragile v2.1.0
+   Compiling encoding_rs v0.8.35
+   Compiling powerfmt v0.2.0
+   Compiling libz-sys v1.1.28
+   Compiling synstructure v0.13.2
+   Compiling libssh2-sys v0.3.1
+   Compiling ring v0.17.14
+   Compiling libgit2-sys v0.16.2+1.7.2
+   Compiling rustc_version v0.4.1
+   Compiling darling_core v0.23.0
+   Compiling predicates-tree v1.0.13
+   Compiling predicates v3.1.4
+   Compiling tower-layer v0.3.3
+   Compiling lazy_static v1.5.0
+   Compiling num-conv v0.2.1
+   Compiling downcast v0.11.0
+   Compiling rustversion v1.0.22
+   Compiling toml_parser v1.1.2+spec-1.1.0
+   Compiling winapi v0.3.9
+   Compiling rstest_macros v0.23.0
+   Compiling futures-timer v3.0.3
+   Compiling time-core v0.1.8
+   Compiling deranged v0.5.8
+   Compiling sync_wrapper v1.0.2
+   Compiling assert_matches v1.5.0
+   Compiling unicase v2.9.0
+   Compiling rustls-native-certs v0.8.3
+   Compiling regex v1.12.3
+   Compiling rustls-pemfile v2.2.0
+   Compiling inout v0.1.4
+   Compiling num-integer v0.1.46
+   Compiling serde_path_to_error v0.1.20
+   Compiling multer v3.1.0
+   Compiling filetime v0.2.27
+   Compiling matchit v0.7.3
+   Compiling toml_edit v0.25.11+spec-1.1.0
+   Compiling utf8parse v0.2.2
+   Compiling once_cell_polyfill v1.70.2
+   Compiling http-body v0.4.6
+   Compiling mime_guess v2.0.5
+   Compiling sha1 v0.10.6
+   Compiling anstyle-query v1.1.5
+   Compiling time-macros v0.2.27
+   Compiling windows-targets v0.52.6
+   Compiling num-bigint v0.4.6
+   Compiling cipher v0.4.4
+   Compiling anstyle-parse v1.0.0
+   Compiling anstyle-wincon v3.0.11
+   Compiling headers-core v0.3.0
+   Compiling cookie v0.18.1
+   Compiling is_terminal_polyfill v1.70.2
+   Compiling zerofrom-derive v0.1.7
+   Compiling yoke-derive v0.8.2
+   Compiling zerovec-derive v0.11.3
+   Compiling tokio-macros v2.7.0
+   Compiling displaydoc v0.2.5
+   Compiling tracing-attributes v0.1.31
+   Compiling futures-macro v0.3.32
+   Compiling serde_derive v1.0.228
+   Compiling thiserror-impl v1.0.69
+   Compiling thiserror-impl v2.0.18
+   Compiling proc-macro-crate v3.5.0
+   Compiling async-trait v0.1.89
+   Compiling structmeta-derive v0.3.0
+   Compiling serde_repr v0.1.20
+   Compiling windows-sys v0.52.0
+   Compiling colorchoice v1.0.5
+   Compiling spin v0.9.8
+   Compiling blowfish v0.9.1
+   Compiling headers v0.4.1
+   Compiling darling_macro v0.23.0
+   Compiling sharded-slab v0.1.7
+   Compiling pem v3.0.6
+   Compiling time v0.3.47
+   Compiling nu-ansi-term v0.50.3
+   Compiling tracing-log v0.2.0
+   Compiling tracing v0.1.44
+   Compiling thread_local v1.1.9
+   Compiling socket2 v0.5.10
+   Compiling zerofrom v0.1.7
+   Compiling yansi v1.0.1
+   Compiling clap_lex v1.1.0
+   Compiling heck v0.5.0
+   Compiling diff v0.1.13
+   Compiling tower-http v0.6.8
+   Compiling structmeta v0.3.0
+   Compiling mockall v0.13.1
+   Compiling winreg v0.50.0
+   Compiling anstream v1.0.0
+   Compiling bcrypt v0.15.1
+   Compiling rustls-pemfile v1.0.4
+   Compiling clap_derive v4.6.1
+   Compiling pretty_assertions v1.4.1
+   Compiling auto-future v1.0.0
+   Compiling sync_wrapper v0.1.2
+   Compiling tokio-util v0.7.18
+   Compiling darling v0.23.0
+   Compiling tokio-native-tls v0.3.1
+   Compiling tracing-subscriber v0.3.23
+   Compiling deadpool-runtime v0.1.4
+   Compiling parse-display-derive v0.9.1
+   Compiling reserve-port v2.4.0
+   Compiling num_cpus v1.17.0
+   Compiling ipnet v2.12.0
+   Compiling either v1.15.0
+   Compiling serde_urlencoded v0.7.1
+   Compiling yoke v0.8.2
+   Compiling docker_credential v1.3.2
+   Compiling assert-json-diff v2.0.2
+   Compiling clap_builder v4.6.0
+   Compiling h2 v0.4.13
+   Compiling tokio-test v0.4.5
+   Compiling tokio-tar v0.3.1
+   Compiling serde_with_macros v3.18.0
+   Compiling deadpool v0.12.3
+   Compiling simple_asn1 v0.6.4
+   Compiling rustls-webpki v0.103.13
+   Compiling jsonwebtoken v9.3.1
+   Compiling zerovec v0.11.6
+   Compiling zerotrie v0.2.4
+   Compiling serde_with v3.18.0
+   Compiling parse-display v0.9.1
+   Compiling futures-executor v0.3.32
+   Compiling axum-core v0.4.5
+   Compiling tower v0.5.3
+   Compiling h2 v0.3.27
+   Compiling rust-multipart-rfc7578_2 v0.6.1
+   Compiling futures v0.3.32
+   Compiling tinystr v0.8.3
+   Compiling potential_utf v0.1.5
+   Compiling clap v4.6.1
+   Compiling rstest v0.23.0
+   Compiling icu_locale_core v2.2.0
+   Compiling icu_collections v2.2.0
+   Compiling bollard-stubs v1.47.1-rc.27.3.1
+   Compiling icu_provider v2.2.0
+   Compiling icu_properties v2.2.0
+   Compiling icu_normalizer v2.2.0
+   Compiling tokio-rustls v0.26.4
+   Compiling hyper v1.9.0
+   Compiling hyper v0.14.32
+   Compiling idna_adapter v1.2.2
+   Compiling hyper-util v0.1.20
+   Compiling idna v1.1.0
+   Compiling url v2.5.8
+   Compiling sqlx-core v0.7.4
+   Compiling hyper-rustls v0.27.9
+   Compiling hyper-named-pipe v0.1.0
+   Compiling axum v0.7.9
+   Compiling wiremock v0.6.5
+   Compiling hyper-tls v0.5.0
+   Compiling reqwest v0.11.27
+   Compiling sqlx-postgres v0.7.4
+   Compiling axum-extra v0.9.6
+   Compiling axum-test v15.7.4
+   Compiling git2 v0.18.3
+   Compiling sqlx-macros-core v0.7.4
+   Compiling sqlx-macros v0.7.4
+   Compiling bollard v0.18.1
+   Compiling testcontainers v0.23.3
+   Compiling sqlx v0.7.4
+   Compiling gitpub-core v0.1.0 (D:\.tendril\Plans\00064-AddIntegrationTestsWithDatabasePersistenceVerification\worktrees\gitpub\gitpub-core)
+   Compiling gitpub-sliplane v0.1.0 (D:\.tendril\Plans\00064-AddIntegrationTestsWithDatabasePersistenceVerification\worktrees\gitpub\gitpub-sliplane)
+   Compiling gitpub-cli v0.1.0 (D:\.tendril\Plans\00064-AddIntegrationTestsWithDatabasePersistenceVerification\worktrees\gitpub\gitpub-cli)
+   Compiling gitpub-server v0.1.0 (D:\.tendril\Plans\00064-AddIntegrationTestsWithDatabasePersistenceVerification\worktrees\gitpub\gitpub-server)
+error[E0061]: this function takes 3 arguments but 2 arguments were supplied
+   --> gitpub-core\src\lib.rs:245:20
+    |
+245 |         let user = User::new("testuser".to_string(), "test@example.com".to_string());
+    |                    ^^^^^^^^^-------------------------------------------------------- argument #3 of type `std::string::String` is missing
+    |
+note: associated function defined here
+   --> gitpub-core\src\lib.rs:41:12
+    |
+ 41 |     pub fn new(username: String, email: String, password_hash: String) -> Self {
+    |            ^^^                                  ---------------------
+help: provide the argument
+    |
+245 |         let user = User::new("testuser".to_string(), "test@example.com".to_string(), /* std::string::String */);
+    |                                                                                    +++++++++++++++++++++++++++
+
+error[E0061]: this function takes 3 arguments but 2 arguments were supplied
+   --> gitpub-core\src\lib.rs:268:20
+    |
+268 |         let user = User::new("repoowner".to_string(), "owner@example.com".to_string());
+    |                    ^^^^^^^^^---------------------------------------------------------- argument #3 of type `std::string::String` is missing
+    |
+note: associated function defined here
+   --> gitpub-core\src\lib.rs:41:12
+    |
+ 41 |     pub fn new(username: String, email: String, password_hash: String) -> Self {
+    |            ^^^                                  ---------------------
+help: provide the argument
+    |
+268 |         let user = User::new("repoowner".to_string(), "owner@example.com".to_string(), /* std::string::String */);
+    |                                                                                      +++++++++++++++++++++++++++
+
+error[E0061]: this function takes 3 arguments but 2 arguments were supplied
+   --> gitpub-core\src\lib.rs:298:24
+    |
+298 |             let user = User::new(format!("user{}", i), format!("user{}@example.com", i));
+    |                        ^^^^^^^^^-------------------------------------------------------- argument #3 of type `std::string::String` is missing
+    |
+note: associated function defined here
+   --> gitpub-core\src\lib.rs:41:12
+    |
+ 41 |     pub fn new(username: String, email: String, password_hash: String) -> Self {
+    |            ^^^                                  ---------------------
+help: provide the argument
+    |
+298 |             let user = User::new(format!("user{}", i), format!("user{}@example.com", i), /* std::string::String */);
+    |                                                                                        +++++++++++++++++++++++++++
+
+error[E0432]: unresolved import `testcontainers::clients`
+ --> gitpub-server\tests\auth_integration_tests.rs:8:22
+  |
+8 | use testcontainers::{clients::Cli, core::WaitFor, GenericImage};
+  |                      ^^^^^^^ could not find `clients` in `testcontainers`
+
+error[E0061]: this function takes 3 arguments but 2 arguments were supplied
+   --> gitpub-core\src\lib.rs:316:21
+    |
+316 |         let user1 = User::new("owner1".to_string(), "owner1@example.com".to_string());
+    |                     ^^^^^^^^^-------------------------------------------------------- argument #3 of type `std::string::String` is missing
+    |
+note: associated function defined here
+   --> gitpub-core\src\lib.rs:41:12
+    |
+ 41 |     pub fn new(username: String, email: String, password_hash: String) -> Self {
+    |            ^^^                                  ---------------------
+help: provide the argument
+    |
+316 |         let user1 = User::new("owner1".to_string(), "owner1@example.com".to_string(), /* std::string::String */);
+    |                                                                                     +++++++++++++++++++++++++++
+
+error[E0061]: this function takes 3 arguments but 2 arguments were supplied
+   --> gitpub-core\src\lib.rs:317:21
+    |
+317 |         let user2 = User::new("owner2".to_string(), "owner2@example.com".to_string());
+    |                     ^^^^^^^^^-------------------------------------------------------- argument #3 of type `std::string::String` is missing
+    |
+note: associated function defined here
+   --> gitpub-core\src\lib.rs:41:12
+    |
+ 41 |     pub fn new(username: String, email: String, password_hash: String) -> Self {
+    |            ^^^                                  ---------------------
+help: provide the argument
+    |
+317 |         let user2 = User::new("owner2".to_string(), "owner2@example.com".to_string(), /* std::string::String */);
+    |                                                                                     +++++++++++++++++++++++++++
+
+error[E0432]: unresolved import `testcontainers::clients`
+ --> gitpub-core\tests\integration_tests.rs:2:22
+  |
+2 | use testcontainers::{clients::Cli, core::WaitFor, GenericImage};
+  |                      ^^^^^^^ could not find `clients` in `testcontainers`
+
+error[E0433]: cannot find type `RwLock` in this scope
+   --> gitpub-server\src\main.rs:157:29
+    |
+157 |             users: Arc::new(RwLock::new(HashMap::new())),
+    |                             ^^^^^^ use of undeclared type `RwLock`
+    |
+help: consider importing this struct
+    |
+145 +     use std::sync::RwLock;
+    |
+
+error[E0433]: cannot find type `HashMap` in this scope
+   --> gitpub-server\src\main.rs:157:41
+    |
+157 |             users: Arc::new(RwLock::new(HashMap::new())),
+    |                                         ^^^^^^^ use of undeclared type `HashMap`
+    |
+help: consider importing this struct
+    |
+145 +     use std::collections::HashMap;
+    |
+
+error[E0425]: cannot find type `Container` in crate `testcontainers`
+  --> gitpub-core\tests\integration_tests.rs:4:51
+   |
+ 4 | async fn setup_test_db() -> (Cli, testcontainers::Container<'static, GenericImage>, Database) {
+   |                                                   ^^^^^^^^^ not found in `testcontainers`
+   |
+note: found an item that was configured out
+  --> C:\Users\pavel\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\testcontainers-0.23.3\src\lib.rs:80:22
+   |
+78 | #[cfg(feature = "blocking")]
+   |       -------------------- the item is gated behind the `blocking` feature
+79 | #[cfg_attr(docsrs, doc(cfg(feature = "blocking")))]
+80 | pub use crate::core::Container;
+   |                      ^^^^^^^^^
+
+error[E0433]: cannot find module or crate `gitpub_server` in this scope
+  --> gitpub-server\tests\auth_integration_tests.rs:61:16
+   |
+61 |         _auth: gitpub_server::auth::RequireAuth,
+   |                ^^^^^^^^^^^^^ use of unresolved module or unlinked crate `gitpub_server`
+   |
+help: there is a crate or module with a similar name
+   |
+61 -         _auth: gitpub_server::auth::RequireAuth,
+61 +         _auth: gitpub_core::auth::RequireAuth,
+   |
+
+error[E0433]: cannot find module or crate `gitpub_server` in this scope
+  --> gitpub-server\tests\auth_integration_tests.rs:70:25
+   |
+70 |         Json(req): Json<gitpub_server::auth::RegisterRequest>,
+   |                         ^^^^^^^^^^^^^ use of unresolved module or unlinked crate `gitpub_server`
+   |
+help: there is a crate or module with a similar name
+   |
+70 -         Json(req): Json<gitpub_server::auth::RegisterRequest>,
+70 +         Json(req): Json<gitpub_core::auth::RegisterRequest>,
+   |
+
+error[E0433]: cannot find module or crate `gitpub_server` in this scope
+  --> gitpub-server\tests\auth_integration_tests.rs:71:39
+   |
+71 |     ) -> Result<(AxumStatusCode, Json<gitpub_server::auth::LoginResponse>), gitpub_server::auth::AuthError> {
+   |                                       ^^^^^^^^^^^^^ use of unresolved module or unlinked crate `gitpub_server`
+   |
+help: there is a crate or module with a similar name
+   |
+71 -     ) -> Result<(AxumStatusCode, Json<gitpub_server::auth::LoginResponse>), gitpub_server::auth::AuthError> {
+71 +     ) -> Result<(AxumStatusCode, Json<gitpub_core::auth::LoginResponse>), gitpub_server::auth::AuthError> {
+   |
+
+For more information about this error, try `rustc --explain E0061`.
+error[E0308]: mismatched types
+  --> gitpub-core\tests\integration_tests.rs:7:28
+   |
+ 7 |         .with_exposed_port(5432)
+   |          ----------------- ^^^^ expected `ContainerPort`, found integer
+   |          |
+   |          arguments to this method are incorrect
+   |
+note: method defined here
+  --> C:\Users\pavel\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\testcontainers-0.23.3\src\images\generic.rs:77:12
+   |
+77 |     pub fn with_exposed_port(mut self, port: ContainerPort) -> Self {
+   |            ^^^^^^^^^^^^^^^^^
+help: try wrapping the expression in a variant of `ContainerPort`
+   |
+ 7 |         .with_exposed_port(testcontainers::core::ContainerPort::Tcp(5432))
+   |                            +++++++++++++++++++++++++++++++++++++++++    +
+ 7 |         .with_exposed_port(testcontainers::core::ContainerPort::Udp(5432))
+   |                            +++++++++++++++++++++++++++++++++++++++++    +
+ 7 |         .with_exposed_port(testcontainers::core::ContainerPort::Sctp(5432))
+   |                            ++++++++++++++++++++++++++++++++++++++++++    +
+
+error[E0599]: no method named `with_env_var` found for struct `GenericImage` in the current scope
+  --> gitpub-core\tests\integration_tests.rs:8:10
+   |
+ 6 |       let postgres_image = GenericImage::new("postgres", "16-alpine")
+   |  __________________________-
+ 7 | |         .with_exposed_port(5432)
+ 8 | |         .with_env_var("POSTGRES_USER", "postgres")
+   | |_________-^^^^^^^^^^^^
+   |
+  ::: C:\Users\pavel\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\testcontainers-0.23.3\src\core\image\image_ext.rs:89:8
+   |
+89 |       fn with_env_var(self, name: impl Into<String>, value: impl Into<String>)
+   |          ------------ the method is available for `GenericImage` here
+   |
+   = help: items from traits can only be used if the trait is in scope
+help: there is a method `env_vars` with a similar name, but with different arguments
+  --> C:\Users\pavel\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\testcontainers-0.23.3\src\core\image.rs:54:5
+   |
+54 | /     fn env_vars(
+55 | |         &self,
+56 | |     ) -> impl IntoIterator<Item = (impl Into<Cow<'_, str>>, impl Into<Cow<'_, str>>)> {
+   | |_____________________________________________________________________________________^
+help: trait `ImageExt` which provides `with_env_var` is implemented but not in scope; perhaps you want to import it
+   |
+ 1 + use testcontainers::ImageExt;
+   |
+
+error[E0433]: cannot find module or crate `gitpub_server` in this scope
+  --> gitpub-server\tests\auth_integration_tests.rs:71:77
+   |
+71 |     ) -> Result<(AxumStatusCode, Json<gitpub_server::auth::LoginResponse>), gitpub_server::auth::AuthError> {
+   |                                                                             ^^^^^^^^^^^^^ use of unresolved module or unlinked crate `gitpub_server`
+   |
+help: there is a crate or module with a similar name
+   |
+71 -     ) -> Result<(AxumStatusCode, Json<gitpub_server::auth::LoginResponse>), gitpub_server::auth::AuthError> {
+71 +     ) -> Result<(AxumStatusCode, Json<gitpub_server::auth::LoginResponse>), gitpub_core::auth::AuthError> {
+   |
+
+error: could not compile `gitpub-core` (lib test) due to 5 previous errors
+warning: build failed, waiting for other jobs to finish...
+error[E0433]: cannot find module or crate `gitpub_server` in this scope
+  --> gitpub-server\tests\auth_integration_tests.rs:73:24
+   |
+73 |             return Err(gitpub_server::auth::AuthError::UserAlreadyExists);
+   |                        ^^^^^^^^^^^^^ use of unresolved module or unlinked crate `gitpub_server`
+   |
+help: there is a crate or module with a similar name
+   |
+73 -             return Err(gitpub_server::auth::AuthError::UserAlreadyExists);
+73 +             return Err(gitpub_core::auth::AuthError::UserAlreadyExists);
+   |
+
+Some errors have detailed explanations: E0308, E0425, E0432, E0599.
+For more information about an error, try `rustc --explain E0308`.
+error[E0433]: cannot find module or crate `gitpub_server` in this scope
+  --> gitpub-server\tests\auth_integration_tests.rs:77:24
+   |
+77 |             return Err(gitpub_server::auth::AuthError::UserAlreadyExists);
+   |                        ^^^^^^^^^^^^^ use of unresolved module or unlinked crate `gitpub_server`
+   |
+help: there is a crate or module with a similar name
+   |
+77 -             return Err(gitpub_server::auth::AuthError::UserAlreadyExists);
+77 +             return Err(gitpub_core::auth::AuthError::UserAlreadyExists);
+   |
+
+error: could not compile `gitpub-core` (test "integration_tests") due to 4 previous errors
+error[E0433]: cannot find module or crate `gitpub_server` in this scope
+  --> gitpub-server\tests\auth_integration_tests.rs:80:29
+   |
+80 |         let password_hash = gitpub_server::auth::hash_password(&req.password)?;
+   |                             ^^^^^^^^^^^^^ use of unresolved module or unlinked crate `gitpub_server`
+   |
+help: there is a crate or module with a similar name
+   |
+80 -         let password_hash = gitpub_server::auth::hash_password(&req.password)?;
+80 +         let password_hash = gitpub_core::auth::hash_password(&req.password)?;
+   |
+
+error[E0433]: cannot find module or crate `gitpub_server` in this scope
+  --> gitpub-server\tests\auth_integration_tests.rs:85:17
+   |
+85 |                 gitpub_server::auth::AuthError::UserAlreadyExists
+   |                 ^^^^^^^^^^^^^ use of unresolved module or unlinked crate `gitpub_server`
+   |
+help: there is a crate or module with a similar name
+   |
+85 -                 gitpub_server::auth::AuthError::UserAlreadyExists
+85 +                 gitpub_core::auth::AuthError::UserAlreadyExists
+   |
+
+error[E0433]: cannot find module or crate `gitpub_server` in this scope
+  --> gitpub-server\tests\auth_integration_tests.rs:87:17
+   |
+87 |                 gitpub_server::auth::AuthError::InternalError
+   |                 ^^^^^^^^^^^^^ use of unresolved module or unlinked crate `gitpub_server`
+   |
+help: there is a crate or module with a similar name
+   |
+87 -                 gitpub_server::auth::AuthError::InternalError
+87 +                 gitpub_core::auth::AuthError::InternalError
+   |
+
+error[E0433]: cannot find module or crate `gitpub_server` in this scope
+  --> gitpub-server\tests\auth_integration_tests.rs:91:21
+   |
+91 |         let token = gitpub_server::auth::generate_jwt(&user)?;
+   |                     ^^^^^^^^^^^^^ use of unresolved module or unlinked crate `gitpub_server`
+   |
+help: there is a crate or module with a similar name
+   |
+91 -         let token = gitpub_server::auth::generate_jwt(&user)?;
+91 +         let token = gitpub_core::auth::generate_jwt(&user)?;
+   |
+
+error[E0433]: cannot find module or crate `gitpub_server` in this scope
+  --> gitpub-server\tests\auth_integration_tests.rs:95:18
+   |
+95 |             Json(gitpub_server::auth::LoginResponse {
+   |                  ^^^^^^^^^^^^^ use of unresolved module or unlinked crate `gitpub_server`
+   |
+help: there is a crate or module with a similar name
+   |
+95 -             Json(gitpub_server::auth::LoginResponse {
+95 +             Json(gitpub_core::auth::LoginResponse {
+   |
+
+error[E0433]: cannot find module or crate `gitpub_server` in this scope
+   --> gitpub-server\tests\auth_integration_tests.rs:104:25
+    |
+104 |         Json(req): Json<gitpub_server::auth::LoginRequest>,
+    |                         ^^^^^^^^^^^^^ use of unresolved module or unlinked crate `gitpub_server`
+    |
+help: there is a crate or module with a similar name
+    |
+104 -         Json(req): Json<gitpub_server::auth::LoginRequest>,
+104 +         Json(req): Json<gitpub_core::auth::LoginRequest>,
+    |
+
+error[E0560]: struct `AppState` has no field named `users`
+   --> gitpub-server\src\main.rs:157:13
+    |
+157 |             users: Arc::new(RwLock::new(HashMap::new())),
+    |             ^^^^^ `AppState` does not have this field
+    |
+    = note: available fields are: `db`
+
+error[E0433]: cannot find module or crate `gitpub_server` in this scope
+   --> gitpub-server\tests\auth_integration_tests.rs:105:22
+    |
+105 |     ) -> Result<Json<gitpub_server::auth::LoginResponse>, gitpub_server::auth::AuthError> {
+    |                      ^^^^^^^^^^^^^ use of unresolved module or unlinked crate `gitpub_server`
+    |
+help: there is a crate or module with a similar name
+    |
+105 -     ) -> Result<Json<gitpub_server::auth::LoginResponse>, gitpub_server::auth::AuthError> {
+105 +     ) -> Result<Json<gitpub_core::auth::LoginResponse>, gitpub_server::auth::AuthError> {
+    |
+
+error[E0433]: cannot find module or crate `gitpub_server` in this scope
+   --> gitpub-server\tests\auth_integration_tests.rs:105:59
+    |
+105 |     ) -> Result<Json<gitpub_server::auth::LoginResponse>, gitpub_server::auth::AuthError> {
+    |                                                           ^^^^^^^^^^^^^ use of unresolved module or unlinked crate `gitpub_server`
+    |
+help: there is a crate or module with a similar name
+    |
+105 -     ) -> Result<Json<gitpub_server::auth::LoginResponse>, gitpub_server::auth::AuthError> {
+105 +     ) -> Result<Json<gitpub_server::auth::LoginResponse>, gitpub_core::auth::AuthError> {
+    |
+
+error[E0433]: cannot find module or crate `gitpub_server` in this scope
+   --> gitpub-server\tests\auth_integration_tests.rs:110:26
+    |
+110 |             .map_err(|_| gitpub_server::auth::AuthError::InternalError)?
+    |                          ^^^^^^^^^^^^^ use of unresolved module or unlinked crate `gitpub_server`
+    |
+help: there is a crate or module with a similar name
+    |
+110 -             .map_err(|_| gitpub_server::auth::AuthError::InternalError)?
+110 +             .map_err(|_| gitpub_core::auth::AuthError::InternalError)?
+    |
+
+error[E0433]: cannot find module or crate `gitpub_server` in this scope
+   --> gitpub-server\tests\auth_integration_tests.rs:111:20
+    |
+111 |             .ok_or(gitpub_server::auth::AuthError::InvalidCredentials)?;
+    |                    ^^^^^^^^^^^^^ use of unresolved module or unlinked crate `gitpub_server`
+    |
+help: there is a crate or module with a similar name
+    |
+111 -             .ok_or(gitpub_server::auth::AuthError::InvalidCredentials)?;
+111 +             .ok_or(gitpub_core::auth::AuthError::InvalidCredentials)?;
+    |
+
+error[E0433]: cannot find module or crate `gitpub_server` in this scope
+   --> gitpub-server\tests\auth_integration_tests.rs:113:24
+    |
+113 |         let is_valid = gitpub_server::auth::verify_password(&req.password, &user.password_hash)?;
+    |                        ^^^^^^^^^^^^^ use of unresolved module or unlinked crate `gitpub_server`
+    |
+help: there is a crate or module with a similar name
+    |
+113 -         let is_valid = gitpub_server::auth::verify_password(&req.password, &user.password_hash)?;
+113 +         let is_valid = gitpub_core::auth::verify_password(&req.password, &user.password_hash)?;
+    |
+
+error[E0433]: cannot find module or crate `gitpub_server` in this scope
+   --> gitpub-server\tests\auth_integration_tests.rs:115:24
+    |
+115 |             return Err(gitpub_server::auth::AuthError::InvalidCredentials);
+    |                        ^^^^^^^^^^^^^ use of unresolved module or unlinked crate `gitpub_server`
+    |
+help: there is a crate or module with a similar name
+    |
+115 -             return Err(gitpub_server::auth::AuthError::InvalidCredentials);
+115 +             return Err(gitpub_core::auth::AuthError::InvalidCredentials);
+    |
+
+error[E0433]: cannot find module or crate `gitpub_server` in this scope
+   --> gitpub-server\tests\auth_integration_tests.rs:118:21
+    |
+118 |         let token = gitpub_server::auth::generate_jwt(&user)?;
+    |                     ^^^^^^^^^^^^^ use of unresolved module or unlinked crate `gitpub_server`
+    |
+help: there is a crate or module with a similar name
+    |
+118 -         let token = gitpub_server::auth::generate_jwt(&user)?;
+118 +         let token = gitpub_core::auth::generate_jwt(&user)?;
+    |
+
+error[E0433]: cannot find module or crate `gitpub_server` in this scope
+   --> gitpub-server\tests\auth_integration_tests.rs:120:17
+    |
+120 |         Ok(Json(gitpub_server::auth::LoginResponse {
+    |                 ^^^^^^^^^^^^^ use of unresolved module or unlinked crate `gitpub_server`
+    |
+help: there is a crate or module with a similar name
+    |
+120 -         Ok(Json(gitpub_server::auth::LoginResponse {
+120 +         Ok(Json(gitpub_core::auth::LoginResponse {
+    |
+
+error[E0433]: cannot find module or crate `gitpub_server` in this scope
+   --> gitpub-server\tests\auth_integration_tests.rs:128:15
+    |
+128 |         auth: gitpub_server::auth::RequireAuth,
+    |               ^^^^^^^^^^^^^ use of unresolved module or unlinked crate `gitpub_server`
+    |
+help: there is a crate or module with a similar name
+    |
+128 -         auth: gitpub_server::auth::RequireAuth,
+128 +         auth: gitpub_core::auth::RequireAuth,
+    |
+
+error[E0433]: cannot find module or crate `gitpub_server` in this scope
+   --> gitpub-server\tests\auth_integration_tests.rs:129:22
+    |
+129 |     ) -> Result<Json<gitpub_server::auth::UserInfo>, gitpub_server::auth::AuthError> {
+    |                      ^^^^^^^^^^^^^ use of unresolved module or unlinked crate `gitpub_server`
+    |
+help: there is a crate or module with a similar name
+    |
+129 -     ) -> Result<Json<gitpub_server::auth::UserInfo>, gitpub_server::auth::AuthError> {
+129 +     ) -> Result<Json<gitpub_core::auth::UserInfo>, gitpub_server::auth::AuthError> {
+    |
+
+Some errors have detailed explanations: E0433, E0560.
+For more information about an error, try `rustc --explain E0433`.
+error[E0433]: cannot find module or crate `gitpub_server` in this scope
+   --> gitpub-server\tests\auth_integration_tests.rs:129:54
+    |
+129 |     ) -> Result<Json<gitpub_server::auth::UserInfo>, gitpub_server::auth::AuthError> {
+    |                                                      ^^^^^^^^^^^^^ use of unresolved module or unlinked crate `gitpub_server`
+    |
+help: there is a crate or module with a similar name
+    |
+129 -     ) -> Result<Json<gitpub_server::auth::UserInfo>, gitpub_server::auth::AuthError> {
+129 +     ) -> Result<Json<gitpub_server::auth::UserInfo>, gitpub_core::auth::AuthError> {
+    |
+
+error[E0433]: cannot find module or crate `gitpub_server` in this scope
+   --> gitpub-server\tests\auth_integration_tests.rs:134:26
+    |
+134 |             .map_err(|_| gitpub_server::auth::AuthError::InternalError)?
+    |                          ^^^^^^^^^^^^^ use of unresolved module or unlinked crate `gitpub_server`
+    |
+help: there is a crate or module with a similar name
+    |
+134 -             .map_err(|_| gitpub_server::auth::AuthError::InternalError)?
+134 +             .map_err(|_| gitpub_core::auth::AuthError::InternalError)?
+    |
+
+error: could not compile `gitpub-server` (bin "gitpub-server" test) due to 3 previous errors
+error[E0433]: cannot find module or crate `gitpub_server` in this scope
+   --> gitpub-server\tests\auth_integration_tests.rs:135:20
+    |
+135 |             .ok_or(gitpub_server::auth::AuthError::InvalidToken)?;
+    |                    ^^^^^^^^^^^^^ use of unresolved module or unlinked crate `gitpub_server`
+    |
+help: there is a crate or module with a similar name
+    |
+135 -             .ok_or(gitpub_server::auth::AuthError::InvalidToken)?;
+135 +             .ok_or(gitpub_core::auth::AuthError::InvalidToken)?;
+    |
+
+error[E0425]: cannot find type `Container` in crate `testcontainers`
+  --> gitpub-server\tests\auth_integration_tests.rs:11:51
+   |
+11 | async fn setup_test_db() -> (Cli, testcontainers::Container<'static, GenericImage>, Database) {
+   |                                                   ^^^^^^^^^ not found in `testcontainers`
+   |
+note: found an item that was configured out
+  --> C:\Users\pavel\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\testcontainers-0.23.3\src\lib.rs:80:22
+   |
+78 | #[cfg(feature = "blocking")]
+   |       -------------------- the item is gated behind the `blocking` feature
+79 | #[cfg_attr(docsrs, doc(cfg(feature = "blocking")))]
+80 | pub use crate::core::Container;
+   |                      ^^^^^^^^^
+
+error[E0308]: mismatched types
+  --> gitpub-server\tests\auth_integration_tests.rs:14:28
+   |
+14 |         .with_exposed_port(5432)
+   |          ----------------- ^^^^ expected `ContainerPort`, found integer
+   |          |
+   |          arguments to this method are incorrect
+   |
+note: method defined here
+  --> C:\Users\pavel\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\testcontainers-0.23.3\src\images\generic.rs:77:12
+   |
+77 |     pub fn with_exposed_port(mut self, port: ContainerPort) -> Self {
+   |            ^^^^^^^^^^^^^^^^^
+help: try wrapping the expression in a variant of `ContainerPort`
+   |
+14 |         .with_exposed_port(testcontainers::core::ContainerPort::Tcp(5432))
+   |                            +++++++++++++++++++++++++++++++++++++++++    +
+14 |         .with_exposed_port(testcontainers::core::ContainerPort::Udp(5432))
+   |                            +++++++++++++++++++++++++++++++++++++++++    +
+14 |         .with_exposed_port(testcontainers::core::ContainerPort::Sctp(5432))
+   |                            ++++++++++++++++++++++++++++++++++++++++++    +
+
+error[E0599]: no method named `with_env_var` found for struct `GenericImage` in the current scope
+  --> gitpub-server\tests\auth_integration_tests.rs:15:10
+   |
+13 |       let postgres_image = GenericImage::new("postgres", "16-alpine")
+   |  __________________________-
+14 | |         .with_exposed_port(5432)
+15 | |         .with_env_var("POSTGRES_USER", "postgres")
+   | |_________-^^^^^^^^^^^^
+   |
+  ::: C:\Users\pavel\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\testcontainers-0.23.3\src\core\image\image_ext.rs:89:8
+   |
+89 |       fn with_env_var(self, name: impl Into<String>, value: impl Into<String>)
+   |          ------------ the method is available for `GenericImage` here
+   |
+   = help: items from traits can only be used if the trait is in scope
+help: there is a method `env_vars` with a similar name, but with different arguments
+  --> C:\Users\pavel\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\testcontainers-0.23.3\src\core\image.rs:54:5
+   |
+54 | /     fn env_vars(
+55 | |         &self,
+56 | |     ) -> impl IntoIterator<Item = (impl Into<Cow<'_, str>>, impl Into<Cow<'_, str>>)> {
+   | |_____________________________________________________________________________________^
+help: trait `ImageExt` which provides `with_env_var` is implemented but not in scope; perhaps you want to import it
+   |
+ 1 + use testcontainers::ImageExt;
+   |
+
+Some errors have detailed explanations: E0308, E0425, E0432, E0433, E0599.
+error: could not compile `gitpub-server` (test "auth_integration_tests") due to 29 previous errors

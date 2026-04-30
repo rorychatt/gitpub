@@ -93,6 +93,8 @@ pub enum AuthError {
     EmailNotVerified,
     Forbidden,
     DatabaseError,
+    InvalidVerificationToken,
+    VerificationTokenExpired,
 }
 
 impl fmt::Display for AuthError {
@@ -119,6 +121,8 @@ impl fmt::Display for AuthError {
             ),
             AuthError::Forbidden => write!(f, "Forbidden"),
             AuthError::DatabaseError => write!(f, "Database error"),
+            AuthError::InvalidVerificationToken => write!(f, "Invalid verification token"),
+            AuthError::VerificationTokenExpired => write!(f, "Verification token expired"),
         }
     }
 }
@@ -154,6 +158,8 @@ impl IntoResponse for AuthError {
                 StatusCode::INTERNAL_SERVER_ERROR,
                 "Internal error".to_string(),
             ),
+            AuthError::InvalidVerificationToken => (StatusCode::BAD_REQUEST, self.to_string()),
+            AuthError::VerificationTokenExpired => (StatusCode::BAD_REQUEST, self.to_string()),
         };
 
         (status, Json(serde_json::json!({ "error": message }))).into_response()

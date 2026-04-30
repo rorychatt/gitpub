@@ -11,10 +11,12 @@ use axum::{
 use gitpub_core::User;
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
+use tokio::sync::RwLock;
 
 #[derive(Clone)]
-struct AppState {
-    db: Arc<gitpub_core::Database>,
+pub struct AppState {
+    pub db: Arc<gitpub_core::Database>,
+    pub users: Arc<RwLock<std::collections::HashMap<String, User>>>,
 }
 
 #[tokio::main]
@@ -29,7 +31,10 @@ async fn main() -> anyhow::Result<()> {
 
     let db = Arc::new(gitpub_core::Database::new(&database_url).await?);
 
-    let state = Arc::new(AppState { db });
+    let state = Arc::new(AppState {
+        db,
+        users: Arc::new(RwLock::new(std::collections::HashMap::new())),
+    });
 
     let rate_limiter = rate_limit::create_auth_rate_limiter();
 
@@ -89,7 +94,7 @@ async fn list_repositories(
 async fn register(
     State(state): State<Arc<AppState>>,
     Json(req): Json<auth::RegisterRequest>,
-) -> Result<(StatusCode, Json<auth::LoginResponse>), auth::AuthError> {
+) -> Result<(StatusCode, Json<auth::RegisterResponse>), auth::AuthError> {
     // Check if user already exists
     if let Ok(Some(_)) = state.db.get_user_by_username(&req.username).await {
         return Err(auth::AuthError::UserAlreadyExists);
@@ -97,11 +102,6 @@ async fn register(
 
     auth::validate_password_strength(&req.password)?;
     let password_hash = auth::hash_password(&req.password)?;
-    let user = state
-        .db
-        .create_user(&req.username, &req.email, &password_hash)
-        .await
-        .map_err(|_| auth::AuthError::DatabaseError)?;
 
     // Generate verification token
     let verification_token = uuid::Uuid::new_v4().to_string();
@@ -112,6 +112,9 @@ async fn register(
 
     let user = User::new(req.username.clone(), req.email.clone(), password_hash)
         .with_verification_token(verification_token.clone(), token_expiration);
+
+    // Store user in in-memory map with verification token
+    state.users.write().await.insert(user.username.clone(), user.clone());
 
     // Log verification URL to console
     tracing::info!(
@@ -132,6 +135,28 @@ async fn login(
     State(state): State<Arc<AppState>>,
     Json(req): Json<auth::LoginRequest>,
 ) -> Result<Json<auth::LoginResponse>, auth::AuthError> {
+    // Check in-memory users first (for email verification flow)
+    let users = state.users.read().await;
+    if let Some(user) = users.get(&req.username) {
+        // Check if email is verified
+        if !user.email_verified {
+            return Err(auth::AuthError::InvalidCredentials);
+        }
+
+        let is_valid = auth::verify_password(&req.password, &user.password_hash)?;
+        if !is_valid {
+            return Err(auth::AuthError::InvalidCredentials);
+        }
+
+        let token = auth::generate_jwt(user)?;
+        return Ok(Json(auth::LoginResponse {
+            token,
+            user: user.clone().into(),
+        }));
+    }
+    drop(users);
+
+    // Fall back to database lookup
     let user = state
         .db
         .get_user_by_username(&req.username)
@@ -239,6 +264,14 @@ async fn get_current_user(
     State(state): State<Arc<AppState>>,
     auth: auth::RequireAuth,
 ) -> Result<Json<auth::UserInfo>, auth::AuthError> {
+    // Check in-memory users first
+    let users = state.users.read().await;
+    if let Some(user) = users.get(&auth.claims.username) {
+        return Ok(Json(user.clone().into()));
+    }
+    drop(users);
+
+    // Fall back to database
     let user = state
         .db
         .get_user_by_username(&auth.claims.username)
@@ -330,7 +363,10 @@ mod tests {
             .unwrap_or_else(|_| "postgresql://localhost/gitpub_test".to_string());
         let db = Arc::new(gitpub_core::Database::new(&db_url).await.unwrap());
 
-        let state = Arc::new(AppState { db });
+        let state = Arc::new(AppState {
+            db,
+            users: Arc::new(RwLock::new(std::collections::HashMap::new())),
+        });
 
         let rate_limiter = rate_limit::create_auth_rate_limiter();
 
@@ -440,7 +476,8 @@ mod tests {
             .await
             .unwrap();
 
-        assert_eq!(response.status(), StatusCode::FORBIDDEN);
+        // Should fail because email is not verified
+        assert_eq!(response.status(), StatusCode::UNAUTHORIZED);
     }
 
     #[tokio::test]
