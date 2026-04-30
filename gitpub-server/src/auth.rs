@@ -15,7 +15,8 @@ use serde::{Deserialize, Serialize};
 use std::fmt;
 
 const JWT_SECRET_ENV: &str = "JWT_SECRET";
-const TOKEN_EXPIRATION_HOURS: i64 = 24;
+const ACCESS_TOKEN_EXPIRATION_MINUTES: i64 = 15;
+const REFRESH_TOKEN_EXPIRATION_DAYS: i64 = 30;
 const BCRYPT_COST: u32 = 12;
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -23,6 +24,14 @@ pub struct Claims {
     pub user_id: String,
     pub username: String,
     pub exp: i64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct RefreshToken {
+    pub token_id: String,
+    pub user_id: String,
+    pub expires_at: i64,
+    pub created_at: i64,
 }
 
 #[derive(Debug, Deserialize)]
@@ -33,7 +42,10 @@ pub struct LoginRequest {
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct LoginResponse {
-    pub token: String,
+    pub access_token: String,
+    pub refresh_token: String,
+    pub token_type: String,
+    pub expires_in: i64,
     pub user: UserInfo,
 }
 
@@ -71,6 +83,9 @@ pub enum AuthError {
     HashingError,
     JwtSecretMissing,
     JwtSecretTooShort,
+    RefreshTokenExpired,
+    RefreshTokenNotFound,
+    RefreshTokenInvalid,
 }
 
 impl fmt::Display for AuthError {
@@ -86,6 +101,9 @@ impl fmt::Display for AuthError {
             AuthError::JwtSecretTooShort => {
                 write!(f, "JWT_SECRET must be at least 32 bytes")
             }
+            AuthError::RefreshTokenExpired => write!(f, "Refresh token expired"),
+            AuthError::RefreshTokenNotFound => write!(f, "Refresh token not found"),
+            AuthError::RefreshTokenInvalid => write!(f, "Invalid refresh token"),
         }
     }
 }
@@ -112,6 +130,9 @@ impl IntoResponse for AuthError {
                 StatusCode::INTERNAL_SERVER_ERROR,
                 "Configuration error".to_string(),
             ),
+            AuthError::RefreshTokenExpired => (StatusCode::UNAUTHORIZED, self.to_string()),
+            AuthError::RefreshTokenNotFound => (StatusCode::UNAUTHORIZED, self.to_string()),
+            AuthError::RefreshTokenInvalid => (StatusCode::UNAUTHORIZED, self.to_string()),
         };
 
         (status, Json(serde_json::json!({ "error": message }))).into_response()
@@ -139,7 +160,7 @@ pub fn get_jwt_secret() -> Result<String, AuthError> {
 pub fn generate_jwt(user: &User) -> Result<String, AuthError> {
     let secret = get_jwt_secret()?;
     let expiration = chrono::Utc::now()
-        .checked_add_signed(chrono::Duration::hours(TOKEN_EXPIRATION_HOURS))
+        .checked_add_signed(chrono::Duration::minutes(ACCESS_TOKEN_EXPIRATION_MINUTES))
         .expect("valid timestamp")
         .timestamp();
 
@@ -155,6 +176,18 @@ pub fn generate_jwt(user: &User) -> Result<String, AuthError> {
         &EncodingKey::from_secret(secret.as_bytes()),
     )
     .map_err(|_| AuthError::InvalidToken)
+}
+
+pub fn generate_refresh_token(user: &User) -> RefreshToken {
+    RefreshToken {
+        token_id: uuid::Uuid::new_v4().to_string(),
+        user_id: user.id.clone(),
+        expires_at: chrono::Utc::now()
+            .checked_add_signed(chrono::Duration::days(REFRESH_TOKEN_EXPIRATION_DAYS))
+            .expect("valid timestamp")
+            .timestamp(),
+        created_at: chrono::Utc::now().timestamp(),
+    }
 }
 
 pub fn validate_jwt(token: &str) -> Result<Claims, AuthError> {
@@ -247,18 +280,24 @@ mod tests {
 
     #[test]
     fn test_validate_jwt_accepts_valid_token() {
-        std::env::set_var(
-            JWT_SECRET_ENV,
-            "test_secret_key_that_is_at_least_32_bytes_long",
-        );
-
         let user = User::new(
             "testuser".to_string(),
             "test@example.com".to_string(),
             "hash123".to_string(),
         );
 
+        std::env::set_var(
+            JWT_SECRET_ENV,
+            "test_secret_key_that_is_at_least_32_bytes_long",
+        );
+
         let token = generate_jwt(&user).expect("JWT generation should succeed");
+
+        std::env::set_var(
+            JWT_SECRET_ENV,
+            "test_secret_key_that_is_at_least_32_bytes_long",
+        );
+
         let claims = validate_jwt(&token).expect("JWT validation should succeed");
 
         assert_eq!(claims.user_id, user.id);
@@ -292,5 +331,70 @@ mod tests {
             "this_is_a_valid_secret_that_is_at_least_32_bytes",
         );
         assert!(get_jwt_secret().is_ok());
+    }
+
+    #[test]
+    fn test_generate_refresh_token_creates_valid_token() {
+        let user = User::new(
+            "testuser".to_string(),
+            "test@example.com".to_string(),
+            "hash123".to_string(),
+        );
+
+        let refresh_token = generate_refresh_token(&user);
+
+        assert!(!refresh_token.token_id.is_empty());
+        assert_eq!(refresh_token.user_id, user.id);
+        assert!(refresh_token.expires_at > chrono::Utc::now().timestamp());
+        assert!(refresh_token.created_at <= chrono::Utc::now().timestamp());
+    }
+
+    #[test]
+    fn test_refresh_token_expiration_validation() {
+        let user = User::new(
+            "testuser".to_string(),
+            "test@example.com".to_string(),
+            "hash123".to_string(),
+        );
+
+        let refresh_token = generate_refresh_token(&user);
+        let expected_expiration = chrono::Utc::now()
+            .checked_add_signed(chrono::Duration::days(REFRESH_TOKEN_EXPIRATION_DAYS))
+            .unwrap()
+            .timestamp();
+
+        assert!(refresh_token.expires_at >= expected_expiration - 2);
+        assert!(refresh_token.expires_at <= expected_expiration + 2);
+    }
+
+    #[test]
+    fn test_access_token_short_lifetime() {
+        let user = User::new(
+            "testuser".to_string(),
+            "test@example.com".to_string(),
+            "hash123".to_string(),
+        );
+
+        std::env::set_var(
+            JWT_SECRET_ENV,
+            "test_secret_key_that_is_at_least_32_bytes_long",
+        );
+
+        let token = generate_jwt(&user).expect("JWT generation should succeed");
+
+        std::env::set_var(
+            JWT_SECRET_ENV,
+            "test_secret_key_that_is_at_least_32_bytes_long",
+        );
+
+        let claims = validate_jwt(&token).expect("JWT validation should succeed");
+
+        let expected_expiration = chrono::Utc::now()
+            .checked_add_signed(chrono::Duration::minutes(ACCESS_TOKEN_EXPIRATION_MINUTES))
+            .unwrap()
+            .timestamp();
+
+        assert!(claims.exp >= expected_expiration - 2);
+        assert!(claims.exp <= expected_expiration + 2);
     }
 }
