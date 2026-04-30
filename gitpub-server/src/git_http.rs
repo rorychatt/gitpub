@@ -409,7 +409,8 @@ mod tests {
             .with_state(state);
 
         use base64::Engine;
-        let wrong_creds = base64::engine::general_purpose::STANDARD.encode("testowner:wrong_password");
+        let wrong_creds =
+            base64::engine::general_purpose::STANDARD.encode("testowner:wrong_password");
 
         let resp = app
             .oneshot(

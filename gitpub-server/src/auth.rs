@@ -235,12 +235,11 @@ impl FromRequestParts<Arc<crate::AppState>> for RequireGitAuth {
 
         if let Some(basic_credentials) = auth_header.strip_prefix("Basic ") {
             use base64::Engine;
-            let decoded =
-                base64::engine::general_purpose::STANDARD
-                    .decode(basic_credentials)
-                    .map_err(|_| {
-                        (StatusCode::UNAUTHORIZED, "Invalid authorization header").into_response()
-                    })?;
+            let decoded = base64::engine::general_purpose::STANDARD
+                .decode(basic_credentials)
+                .map_err(|_| {
+                    (StatusCode::UNAUTHORIZED, "Invalid authorization header").into_response()
+                })?;
 
             let credentials_str = String::from_utf8(decoded).map_err(|_| {
                 (StatusCode::UNAUTHORIZED, "Invalid authorization header").into_response()
