@@ -1,5 +1,5 @@
-use clap::{Parser, Subcommand};
 use anyhow::Result;
+use clap::{Parser, Subcommand};
 
 #[derive(Parser)]
 #[command(name = "gitpub")]
@@ -54,9 +54,8 @@ fn main() -> Result<()> {
             Ok(())
         }
         Commands::Clone { url, directory } => {
-            let target = directory.unwrap_or_else(|| {
-                url.split('/').last().unwrap_or("repo").to_string()
-            });
+            let target =
+                directory.unwrap_or_else(|| url.split('/').last().unwrap_or("repo").to_string());
             println!("Cloning {} to {}", url, target);
             // TODO: Implement repository cloning
             Ok(())

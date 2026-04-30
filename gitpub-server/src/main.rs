@@ -1,8 +1,4 @@
-use axum::{
-    extract::State,
-    routing::get,
-    Json, Router,
-};
+use axum::{extract::State, routing::get, Json, Router};
 use serde::Serialize;
 use std::sync::Arc;
 use tracing_subscriber;
@@ -45,9 +41,7 @@ struct RepositoryInfo {
     description: Option<String>,
 }
 
-async fn list_repositories(
-    State(_state): State<Arc<AppState>>,
-) -> Json<RepositoryListResponse> {
+async fn list_repositories(State(_state): State<Arc<AppState>>) -> Json<RepositoryListResponse> {
     Json(RepositoryListResponse {
         repositories: vec![],
     })
