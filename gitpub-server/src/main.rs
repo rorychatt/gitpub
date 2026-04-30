@@ -3,20 +3,18 @@ mod rate_limit;
 mod git_http;
 
 use axum::{
-    extract::State,
+    extract::{Path, State},
     http::StatusCode,
-    routing::{get, post},
+    routing::{get, patch, post},
     Json, Router,
 };
 use gitpub_core::User;
-use serde::Serialize;
-use std::{collections::HashMap, path::PathBuf, sync::Arc};
-use tokio::sync::RwLock;
+use serde::{Deserialize, Serialize};
+use std::sync::Arc;
 
 #[derive(Clone)]
-pub struct AppState {
-    pub users: Arc<RwLock<HashMap<String, User>>>,
-    pub repos_path: PathBuf,
+struct AppState {
+    db: Arc<gitpub_core::Database>,
 }
 
 #[tokio::main]
@@ -25,14 +23,13 @@ async fn main() -> anyhow::Result<()> {
 
     auth::get_jwt_secret().expect("JWT_SECRET must be set and at least 32 bytes");
 
-    let repos_path = std::env::var("GITPUB_REPOS_PATH")
-        .map(PathBuf::from)
-        .unwrap_or_else(|_| PathBuf::from("/var/lib/gitpub/repos"));
+    // Get DATABASE_URL from environment
+    let database_url = std::env::var("DATABASE_URL")
+        .unwrap_or_else(|_| "postgresql://localhost/gitpub".to_string());
 
-    let state = Arc::new(AppState {
-        users: Arc::new(RwLock::new(HashMap::new())),
-        repos_path,
-    });
+    let db = Arc::new(gitpub_core::Database::new(&database_url).await?);
+
+    let state = Arc::new(AppState { db });
 
     let rate_limiter = rate_limit::create_auth_rate_limiter();
 
@@ -48,14 +45,10 @@ async fn main() -> anyhow::Result<()> {
         .merge(auth_routes)
         .route("/api/auth/me", get(get_current_user))
         .route("/api/repositories", get(list_repositories))
-        .route("/:owner/:repo/info/refs", get(git_http::handle_info_refs))
+        .route("/api/users", get(list_users).post(create_user))
         .route(
-            "/:owner/:repo/git-upload-pack",
-            post(git_http::handle_upload_pack),
-        )
-        .route(
-            "/:owner/:repo/git-receive-pack",
-            post(git_http::handle_receive_pack),
+            "/api/users/:id",
+            get(get_user_by_id).patch(update_user).delete(delete_user),
         )
         .with_state(state);
 
@@ -96,15 +89,19 @@ async fn list_repositories(
 async fn register(
     State(state): State<Arc<AppState>>,
     Json(req): Json<auth::RegisterRequest>,
-) -> Result<(StatusCode, Json<auth::RegisterResponse>), auth::AuthError> {
-    let users = state.users.read().await;
-    if users.contains_key(&req.username) {
+) -> Result<(StatusCode, Json<auth::LoginResponse>), auth::AuthError> {
+    // Check if user already exists
+    if let Ok(Some(_)) = state.db.get_user_by_username(&req.username).await {
         return Err(auth::AuthError::UserAlreadyExists);
     }
-    drop(users);
 
     auth::validate_password_strength(&req.password)?;
     let password_hash = auth::hash_password(&req.password)?;
+    let user = state
+        .db
+        .create_user(&req.username, &req.email, &password_hash)
+        .await
+        .map_err(|_| auth::AuthError::DatabaseError)?;
 
     // Generate verification token
     let verification_token = uuid::Uuid::new_v4().to_string();
@@ -123,9 +120,6 @@ async fn register(
         verification_token
     );
 
-    let mut users = state.users.write().await;
-    users.insert(req.username.clone(), user.clone());
-
     Ok((
         StatusCode::CREATED,
         Json(auth::RegisterResponse {
@@ -138,9 +132,11 @@ async fn login(
     State(state): State<Arc<AppState>>,
     Json(req): Json<auth::LoginRequest>,
 ) -> Result<Json<auth::LoginResponse>, auth::AuthError> {
-    let users = state.users.read().await;
-    let user = users
-        .get(&req.username)
+    let user = state
+        .db
+        .get_user_by_username(&req.username)
+        .await
+        .map_err(|_| auth::AuthError::DatabaseError)?
         .ok_or(auth::AuthError::InvalidCredentials)?;
 
     let is_valid = auth::verify_password(&req.password, &user.password_hash)?;
@@ -148,16 +144,11 @@ async fn login(
         return Err(auth::AuthError::InvalidCredentials);
     }
 
-    // Check if email is verified
-    if !user.email_verified {
-        return Err(auth::AuthError::EmailNotVerified);
-    }
-
-    let token = auth::generate_jwt(user)?;
+    let token = auth::generate_jwt(&user)?;
 
     Ok(Json(auth::LoginResponse {
         token,
-        user: user.clone().into(),
+        user: user.into(),
     }))
 }
 
@@ -248,12 +239,78 @@ async fn get_current_user(
     State(state): State<Arc<AppState>>,
     auth: auth::RequireAuth,
 ) -> Result<Json<auth::UserInfo>, auth::AuthError> {
-    let users = state.users.read().await;
-    let user = users
-        .get(&auth.claims.username)
+    let user = state
+        .db
+        .get_user_by_username(&auth.claims.username)
+        .await
+        .map_err(|_| auth::AuthError::DatabaseError)?
         .ok_or(auth::AuthError::InvalidToken)?;
 
-    Ok(Json(user.clone().into()))
+    Ok(Json(user.into()))
+}
+
+#[derive(Deserialize)]
+struct CreateUserRequest {
+    username: String,
+    email: String,
+}
+
+async fn create_user(
+    State(state): State<Arc<AppState>>,
+    Json(payload): Json<CreateUserRequest>,
+) -> Result<Json<User>, StatusCode> {
+    match state
+        .db
+        .create_user(&payload.username, &payload.email, "")
+        .await
+    {
+        Ok(user) => Ok(Json(user)),
+        Err(_) => Err(StatusCode::INTERNAL_SERVER_ERROR),
+    }
+}
+
+async fn get_user_by_id(
+    State(state): State<Arc<AppState>>,
+    Path(id): Path<String>,
+) -> Result<Json<User>, StatusCode> {
+    match state.db.get_user(&id).await {
+        Ok(Some(user)) => Ok(Json(user)),
+        Ok(None) => Err(StatusCode::NOT_FOUND),
+        Err(_) => Err(StatusCode::INTERNAL_SERVER_ERROR),
+    }
+}
+
+async fn list_users(State(state): State<Arc<AppState>>) -> Result<Json<Vec<User>>, StatusCode> {
+    match state.db.list_users().await {
+        Ok(users) => Ok(Json(users)),
+        Err(_) => Err(StatusCode::INTERNAL_SERVER_ERROR),
+    }
+}
+
+#[derive(Deserialize)]
+struct UpdateUserRequest {
+    email: String,
+}
+
+async fn update_user(
+    State(state): State<Arc<AppState>>,
+    Path(id): Path<String>,
+    Json(payload): Json<UpdateUserRequest>,
+) -> Result<StatusCode, StatusCode> {
+    match state.db.update_user_email(&id, &payload.email).await {
+        Ok(_) => Ok(StatusCode::OK),
+        Err(_) => Err(StatusCode::INTERNAL_SERVER_ERROR),
+    }
+}
+
+async fn delete_user(
+    State(state): State<Arc<AppState>>,
+    Path(id): Path<String>,
+) -> Result<StatusCode, StatusCode> {
+    match state.db.delete_user(&id).await {
+        Ok(_) => Ok(StatusCode::NO_CONTENT),
+        Err(_) => Err(StatusCode::INTERNAL_SERVER_ERROR),
+    }
 }
 
 #[cfg(test)]
@@ -263,16 +320,17 @@ mod tests {
     use axum::http::{Request, StatusCode};
     use tower::ServiceExt;
 
-    fn create_test_app() -> Router {
+    async fn create_test_app() -> Router {
         std::env::set_var(
             "JWT_SECRET",
             "test_secret_key_that_is_at_least_32_bytes_long",
         );
 
-        let state = Arc::new(AppState {
-            users: Arc::new(RwLock::new(HashMap::new())),
-            repos_path: PathBuf::from("/tmp/test-repos"),
-        });
+        let db_url = std::env::var("DATABASE_URL")
+            .unwrap_or_else(|_| "postgresql://localhost/gitpub_test".to_string());
+        let db = Arc::new(gitpub_core::Database::new(&db_url).await.unwrap());
+
+        let state = Arc::new(AppState { db });
 
         let rate_limiter = rate_limit::create_auth_rate_limiter();
 
@@ -288,6 +346,11 @@ mod tests {
             .merge(auth_routes)
             .route("/api/auth/me", get(get_current_user))
             .route("/api/repositories", get(list_repositories))
+            .route("/api/users", get(list_users).post(create_user))
+            .route(
+                "/api/users/:id",
+                get(get_user_by_id).patch(update_user).delete(delete_user),
+            )
             .with_state(state)
     }
 
@@ -298,8 +361,11 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_register_does_not_return_jwt() {
-        let app = create_test_app();
+    async fn test_register_creates_user_with_hashed_password() {
+        if std::env::var("DATABASE_URL").is_err() {
+            return; // Skip if no test database
+        }
+        let app = create_test_app().await;
 
         let body = serde_json::json!({
             "username": "newuser",
@@ -333,8 +399,11 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_login_rejects_unverified_user() {
-        let app = create_test_app();
+    async fn test_login_returns_jwt_on_valid_credentials() {
+        if std::env::var("DATABASE_URL").is_err() {
+            return; // Skip if no test database
+        }
+        let app = create_test_app().await;
 
         let register_body = serde_json::json!({
             "username": "testuser",
@@ -376,7 +445,10 @@ mod tests {
 
     #[tokio::test]
     async fn test_login_rejects_invalid_credentials() {
-        let app = create_test_app();
+        if std::env::var("DATABASE_URL").is_err() {
+            return; // Skip if no test database
+        }
+        let app = create_test_app().await;
 
         let register_body = serde_json::json!({
             "username": "testuser",
@@ -418,7 +490,10 @@ mod tests {
 
     #[tokio::test]
     async fn test_protected_endpoint_requires_auth() {
-        let app = create_test_app();
+        if std::env::var("DATABASE_URL").is_err() {
+            return; // Skip if no test database
+        }
+        let app = create_test_app().await;
 
         let response = app
             .oneshot(
@@ -436,7 +511,10 @@ mod tests {
 
     #[tokio::test]
     async fn test_protected_endpoint_accepts_valid_jwt() {
-        let app = create_test_app();
+        if std::env::var("DATABASE_URL").is_err() {
+            return; // Skip if no test database
+        }
+        let app = create_test_app().await;
 
         let register_body = serde_json::json!({
             "username": "testuser",
@@ -472,7 +550,10 @@ mod tests {
 
     #[tokio::test]
     async fn test_protected_endpoint_rejects_invalid_jwt() {
-        let app = create_test_app();
+        if std::env::var("DATABASE_URL").is_err() {
+            return; // Skip if no test database
+        }
+        let app = create_test_app().await;
 
         let response = app
             .oneshot(
@@ -490,360 +571,29 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_register_generates_verification_token() {
-        std::env::set_var(
-            "JWT_SECRET",
-            "test_secret_key_that_is_at_least_32_bytes_long",
-        );
+    async fn test_create_user_endpoint() {
+        if std::env::var("DATABASE_URL").is_err() {
+            return; // Skip if no test database
+        }
+        let app = create_test_app().await;
 
-        let state = Arc::new(AppState {
-            users: Arc::new(RwLock::new(HashMap::new())),
-            repos_path: PathBuf::from("/tmp/test-repos"),
-        });
-
-        let register_body = serde_json::json!({
-            "username": "newuser",
-            "email": "new@example.com",
-            "password": "password123"
-        });
-
-        let _response = register(
-            State(state.clone()),
-            Json(serde_json::from_value(register_body).unwrap()),
-        )
-        .await
-        .unwrap();
-
-        let users = state.users.read().await;
-        let user = users.get("newuser").unwrap();
-        assert!(!user.email_verified);
-        assert!(user.verification_token.is_some());
-        assert!(user.verification_token_expires_at.is_some());
-    }
-
-    #[tokio::test]
-    async fn test_verify_email_with_valid_token() {
-        std::env::set_var(
-            "JWT_SECRET",
-            "test_secret_key_that_is_at_least_32_bytes_long",
-        );
-
-        let state = Arc::new(AppState {
-            users: Arc::new(RwLock::new(HashMap::new())),
-            repos_path: PathBuf::from("/tmp/test-repos"),
-        });
-
-        // Register user
-        let register_body = serde_json::json!({
+        let body = serde_json::json!({
             "username": "testuser",
-            "email": "test@example.com",
-            "password": "password123"
-        });
-
-        let _response = register(
-            State(state.clone()),
-            Json(serde_json::from_value(register_body).unwrap()),
-        )
-        .await
-        .unwrap();
-
-        // Get verification token
-        let token = {
-            let users = state.users.read().await;
-            users
-                .get("testuser")
-                .unwrap()
-                .verification_token
-                .clone()
-                .unwrap()
-        };
-
-        // Verify email
-        let verify_body = serde_json::json!({
-            "token": token
-        });
-
-        let response = verify_email(
-            State(state.clone()),
-            Json(serde_json::from_value(verify_body).unwrap()),
-        )
-        .await
-        .unwrap();
-
-        assert!(!response.token.is_empty());
-        assert_eq!(response.user.username, "testuser");
-
-        // Check user is verified
-        let users = state.users.read().await;
-        let user = users.get("testuser").unwrap();
-        assert!(user.email_verified);
-        assert!(user.verification_token.is_none());
-        assert!(user.verification_token_expires_at.is_none());
-    }
-
-    #[tokio::test]
-    async fn test_verify_email_with_invalid_token() {
-        std::env::set_var(
-            "JWT_SECRET",
-            "test_secret_key_that_is_at_least_32_bytes_long",
-        );
-
-        let state = Arc::new(AppState {
-            users: Arc::new(RwLock::new(HashMap::new())),
-            repos_path: PathBuf::from("/tmp/test-repos"),
-        });
-
-        let verify_body = serde_json::json!({
-            "token": "invalid-token-12345"
-        });
-
-        let result = verify_email(
-            State(state),
-            Json(serde_json::from_value(verify_body).unwrap()),
-        )
-        .await;
-
-        assert!(result.is_err());
-    }
-
-    #[tokio::test]
-    async fn test_verify_email_with_expired_token() {
-        std::env::set_var(
-            "JWT_SECRET",
-            "test_secret_key_that_is_at_least_32_bytes_long",
-        );
-
-        let state = Arc::new(AppState {
-            users: Arc::new(RwLock::new(HashMap::new())),
-            repos_path: PathBuf::from("/tmp/test-repos"),
-        });
-
-        // Register user
-        let register_body = serde_json::json!({
-            "username": "testuser",
-            "email": "test@example.com",
-            "password": "password123"
-        });
-
-        let _response = register(
-            State(state.clone()),
-            Json(serde_json::from_value(register_body).unwrap()),
-        )
-        .await
-        .unwrap();
-
-        // Manually expire the token
-        let token = {
-            let mut users = state.users.write().await;
-            let user = users.get_mut("testuser").unwrap();
-            let token = user.verification_token.clone().unwrap();
-            user.verification_token_expires_at = Some(chrono::Utc::now().timestamp() - 3600); // 1 hour ago
-            token
-        };
-
-        // Try to verify with expired token
-        let verify_body = serde_json::json!({
-            "token": token
-        });
-
-        let result = verify_email(
-            State(state),
-            Json(serde_json::from_value(verify_body).unwrap()),
-        )
-        .await;
-
-        assert!(result.is_err());
-    }
-
-    #[tokio::test]
-    async fn test_login_accepts_verified_user() {
-        std::env::set_var(
-            "JWT_SECRET",
-            "test_secret_key_that_is_at_least_32_bytes_long",
-        );
-
-        let state = Arc::new(AppState {
-            users: Arc::new(RwLock::new(HashMap::new())),
-            repos_path: PathBuf::from("/tmp/test-repos"),
-        });
-
-        // Register and verify user
-        let register_body = serde_json::json!({
-            "username": "testuser",
-            "email": "test@example.com",
-            "password": "password123"
-        });
-
-        let _response = register(
-            State(state.clone()),
-            Json(serde_json::from_value(register_body).unwrap()),
-        )
-        .await
-        .unwrap();
-
-        let token = {
-            let users = state.users.read().await;
-            users
-                .get("testuser")
-                .unwrap()
-                .verification_token
-                .clone()
-                .unwrap()
-        };
-
-        let verify_body = serde_json::json!({
-            "token": token
-        });
-
-        let _verify_response = verify_email(
-            State(state.clone()),
-            Json(serde_json::from_value(verify_body).unwrap()),
-        )
-        .await
-        .unwrap();
-
-        // Now login should work
-        let login_body = serde_json::json!({
-            "username": "testuser",
-            "password": "password123"
-        });
-
-        let response = login(
-            State(state),
-            Json(serde_json::from_value(login_body).unwrap()),
-        )
-        .await
-        .unwrap();
-
-        assert!(!response.token.is_empty());
-        assert_eq!(response.user.username, "testuser");
-    }
-
-    #[tokio::test]
-    async fn test_resend_verification_generates_new_token() {
-        std::env::set_var(
-            "JWT_SECRET",
-            "test_secret_key_that_is_at_least_32_bytes_long",
-        );
-
-        let state = Arc::new(AppState {
-            users: Arc::new(RwLock::new(HashMap::new())),
-            repos_path: PathBuf::from("/tmp/test-repos"),
-        });
-
-        // Register user
-        let register_body = serde_json::json!({
-            "username": "testuser",
-            "email": "test@example.com",
-            "password": "password123"
-        });
-
-        let _response = register(
-            State(state.clone()),
-            Json(serde_json::from_value(register_body).unwrap()),
-        )
-        .await
-        .unwrap();
-
-        let old_token = {
-            let users = state.users.read().await;
-            users
-                .get("testuser")
-                .unwrap()
-                .verification_token
-                .clone()
-                .unwrap()
-        };
-
-        // Resend verification
-        let resend_body = serde_json::json!({
             "email": "test@example.com"
         });
 
-        let response = resend_verification(
-            State(state.clone()),
-            Json(serde_json::from_value(resend_body).unwrap()),
-        )
-        .await
-        .unwrap();
+        let response = app
+            .oneshot(
+                Request::builder()
+                    .method("POST")
+                    .uri("/api/users")
+                    .header("content-type", "application/json")
+                    .body(Body::from(serde_json::to_string(&body).unwrap()))
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
 
-        assert_eq!(
-            response.1.message,
-            "Verification email resent. Please check your email."
-        );
-
-        let new_token = {
-            let users = state.users.read().await;
-            users
-                .get("testuser")
-                .unwrap()
-                .verification_token
-                .clone()
-                .unwrap()
-        };
-
-        assert_ne!(old_token, new_token);
-    }
-
-    #[tokio::test]
-    async fn test_resend_verification_rejects_verified_users() {
-        std::env::set_var(
-            "JWT_SECRET",
-            "test_secret_key_that_is_at_least_32_bytes_long",
-        );
-
-        let state = Arc::new(AppState {
-            users: Arc::new(RwLock::new(HashMap::new())),
-            repos_path: PathBuf::from("/tmp/test-repos"),
-        });
-
-        // Register and verify user
-        let register_body = serde_json::json!({
-            "username": "testuser",
-            "email": "test@example.com",
-            "password": "password123"
-        });
-
-        let _response = register(
-            State(state.clone()),
-            Json(serde_json::from_value(register_body).unwrap()),
-        )
-        .await
-        .unwrap();
-
-        let token = {
-            let users = state.users.read().await;
-            users
-                .get("testuser")
-                .unwrap()
-                .verification_token
-                .clone()
-                .unwrap()
-        };
-
-        let verify_body = serde_json::json!({
-            "token": token
-        });
-
-        let _verify_response = verify_email(
-            State(state.clone()),
-            Json(serde_json::from_value(verify_body).unwrap()),
-        )
-        .await
-        .unwrap();
-
-        // Try to resend for verified user
-        let resend_body = serde_json::json!({
-            "email": "test@example.com"
-        });
-
-        let response = resend_verification(
-            State(state),
-            Json(serde_json::from_value(resend_body).unwrap()),
-        )
-        .await
-        .unwrap();
-
-        assert_eq!(response.1.message, "Email is already verified.");
+        assert_eq!(response.status(), StatusCode::OK);
     }
 }

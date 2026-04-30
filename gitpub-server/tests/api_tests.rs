@@ -1,9 +1,4 @@
-use axum::{
-    extract::State,
-    http::StatusCode,
-    routing::{get, post},
-    Json, Router,
-};
+use axum::{http::StatusCode, Router};
 use axum_test::TestServer;
 use gitpub_core::User;
 use std::{collections::HashMap, sync::Arc, time::Duration};
