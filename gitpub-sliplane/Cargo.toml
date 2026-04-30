@@ -13,5 +13,9 @@ reqwest-retry = "0.3"
 reqwest-middleware = "0.2"
 
 [dev-dependencies]
-tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
-wiremock = "0.5"
+tokio = { workspace = true }
+tokio-test = { workspace = true }
+mockall = { workspace = true }
+rstest = { workspace = true }
+assert_matches = { workspace = true }
+wiremock = { workspace = true }

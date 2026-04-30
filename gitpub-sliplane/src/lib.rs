@@ -2,6 +2,7 @@ use anyhow::Result;
 use reqwest_middleware::{ClientBuilder, ClientWithMiddleware};
 use reqwest_retry::{policies::ExponentialBackoff, RetryTransientMiddleware};
 use serde::{Deserialize, Serialize};
+use std::time::Duration;
 
 /// Sliplane API client
 pub struct SliplaneClient {
@@ -21,7 +22,14 @@ impl SliplaneClient {
             )
             .build_with_max_retries(3);
 
-        let client = ClientBuilder::new(reqwest::Client::new())
+        // Use default timeouts: 10s connect, 30s request
+        let base_client = reqwest::ClientBuilder::new()
+            .connect_timeout(Duration::from_secs(10))
+            .timeout(Duration::from_secs(30))
+            .build()
+            .expect("Failed to build HTTP client with default timeouts");
+
+        let client = ClientBuilder::new(base_client)
             .with(RetryTransientMiddleware::new_with_policy(retry_policy))
             .build();
 
@@ -35,6 +43,37 @@ impl SliplaneClient {
     pub fn with_api_key(mut self, api_key: String) -> Self {
         self.api_key = Some(api_key);
         self
+    }
+
+    pub fn with_timeouts(
+        api_url: String,
+        connect_timeout: Duration,
+        request_timeout: Duration,
+    ) -> Self {
+        // Configure retry policy: max 3 retries with exponential backoff
+        // Initial delay: 1s, max delay: 10s
+        let retry_policy = ExponentialBackoff::builder()
+            .retry_bounds(
+                std::time::Duration::from_secs(1),
+                std::time::Duration::from_secs(10),
+            )
+            .build_with_max_retries(3);
+
+        let base_client = reqwest::ClientBuilder::new()
+            .connect_timeout(connect_timeout)
+            .timeout(request_timeout)
+            .build()
+            .expect("Failed to build HTTP client with custom timeouts");
+
+        let client = ClientBuilder::new(base_client)
+            .with(RetryTransientMiddleware::new_with_policy(retry_policy))
+            .build();
+
+        Self {
+            api_url,
+            api_key: None,
+            client,
+        }
     }
 
     pub async fn deploy(&self, config: &DeploymentConfig) -> Result<DeploymentResult> {
@@ -134,6 +173,35 @@ mod tests {
             auto_scale: true,
         };
         assert_eq!(config.repository_name, "test-repo");
+    }
+
+    #[test]
+    fn test_client_with_default_timeouts() {
+        let client = SliplaneClient::new("https://api.sliplane.io".to_string());
+        assert_eq!(client.api_url, "https://api.sliplane.io");
+        // Client is created successfully with default timeouts
+    }
+
+    #[test]
+    fn test_client_with_custom_timeouts() {
+        let client = SliplaneClient::with_timeouts(
+            "https://api.sliplane.io".to_string(),
+            Duration::from_secs(5),
+            Duration::from_secs(15),
+        );
+        assert_eq!(client.api_url, "https://api.sliplane.io");
+        // Client is created successfully with custom timeouts
+    }
+
+    #[test]
+    fn test_client_with_custom_timeouts_and_api_key() {
+        let client = SliplaneClient::with_timeouts(
+            "https://api.sliplane.io".to_string(),
+            Duration::from_secs(5),
+            Duration::from_secs(15),
+        )
+        .with_api_key("test-key".to_string());
+        assert_eq!(client.api_key, Some("test-key".to_string()));
     }
 
     #[tokio::test]

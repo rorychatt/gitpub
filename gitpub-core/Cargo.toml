@@ -12,3 +12,14 @@ git2 = { workspace = true }
 anyhow = { workspace = true }
 uuid = { version = "1", features = ["v4", "serde"] }
 chrono = "0.4"
+mockall = { workspace = true, optional = true }
+
+[features]
+test-utils = ["mockall"]
+
+[dev-dependencies]
+tokio-test = { workspace = true }
+mockall = { workspace = true }
+rstest = { workspace = true }
+assert_matches = { workspace = true }
+testcontainers = { workspace = true }

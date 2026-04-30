@@ -33,15 +33,17 @@ pub struct User {
     pub id: String,
     pub username: String,
     pub email: String,
+    pub password_hash: String,
     pub created_at: i64,
 }
 
 impl User {
-    pub fn new(username: String, email: String) -> Self {
+    pub fn new(username: String, email: String, password_hash: String) -> Self {
         Self {
             id: uuid::Uuid::new_v4().to_string(),
             username,
             email,
+            password_hash,
             created_at: chrono::Utc::now().timestamp(),
         }
     }
@@ -54,6 +56,7 @@ pub struct Commit {
     pub message: String,
     pub author: String,
     pub timestamp: i64,
+    pub repository_id: String,
 }
 
 /// Database connection manager
@@ -64,6 +67,7 @@ pub struct Database {
 impl Database {
     pub async fn new(database_url: &str) -> Result<Self> {
         let pool = sqlx::PgPool::connect(database_url).await?;
+        sqlx::migrate!("../migrations").run(&pool).await?;
         Ok(Self { pool })
     }
 
@@ -87,8 +91,22 @@ mod tests {
 
     #[test]
     fn test_user_creation() {
-        let user = User::new("testuser".to_string(), "test@example.com".to_string());
+        let user = User::new(
+            "testuser".to_string(),
+            "test@example.com".to_string(),
+            "hash123".to_string(),
+        );
         assert_eq!(user.username, "testuser");
         assert_eq!(user.email, "test@example.com");
+        assert_eq!(user.password_hash, "hash123");
+    }
+
+    #[tokio::test]
+    async fn test_database_migrations() {
+        // Requires a test database URL in environment
+        if let Ok(db_url) = std::env::var("DATABASE_URL") {
+            let db = Database::new(&db_url).await;
+            assert!(db.is_ok(), "Database migrations should run successfully");
+        }
     }
 }
