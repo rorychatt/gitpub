@@ -3,26 +3,26 @@ use serde::{Deserialize, Serialize};
 
 /// Sliplane API client
 pub struct SliplaneClient {
-    api_url: String,
-    api_key: Option<String>,
-    client: reqwest::Client,
+    _api_url: String,
+    _api_key: Option<String>,
+    _client: reqwest::Client,
 }
 
 impl SliplaneClient {
     pub fn new(api_url: String) -> Self {
         Self {
-            api_url,
-            api_key: None,
-            client: reqwest::Client::new(),
+            _api_url: api_url,
+            _api_key: None,
+            _client: reqwest::Client::new(),
         }
     }
 
     pub fn with_api_key(mut self, api_key: String) -> Self {
-        self.api_key = Some(api_key);
+        self._api_key = Some(api_key);
         self
     }
 
-    pub async fn deploy(&self, config: &DeploymentConfig) -> Result<DeploymentResult> {
+    pub async fn deploy(&self, _config: &DeploymentConfig) -> Result<DeploymentResult> {
         // TODO: Implement actual Sliplane API call
         Ok(DeploymentResult {
             deployment_id: "demo-deployment-id".to_string(),
@@ -31,7 +31,7 @@ impl SliplaneClient {
         })
     }
 
-    pub async fn get_deployment_status(&self, deployment_id: &str) -> Result<DeploymentStatus> {
+    pub async fn get_deployment_status(&self, _deployment_id: &str) -> Result<DeploymentStatus> {
         // TODO: Implement actual Sliplane API call
         Ok(DeploymentStatus::Running)
     }
