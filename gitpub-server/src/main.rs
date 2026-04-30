@@ -1,4 +1,5 @@
 mod auth;
+mod rate_limit;
 
 use axum::{
     extract::State,
@@ -26,10 +27,16 @@ async fn main() -> anyhow::Result<()> {
         users: Arc::new(RwLock::new(HashMap::new())),
     });
 
-    let app = Router::new()
-        .route("/health", get(health_check))
+    let rate_limiter = rate_limit::create_auth_rate_limiter();
+
+    let auth_routes = Router::new()
         .route("/api/auth/register", post(register))
         .route("/api/auth/login", post(login))
+        .layer(rate_limiter);
+
+    let app = Router::new()
+        .route("/health", get(health_check))
+        .merge(auth_routes)
         .route("/api/auth/me", get(get_current_user))
         .route("/api/repositories", get(list_repositories))
         .with_state(state);
@@ -146,10 +153,16 @@ mod tests {
             users: Arc::new(RwLock::new(HashMap::new())),
         });
 
-        Router::new()
-            .route("/health", get(health_check))
+        let rate_limiter = rate_limit::create_auth_rate_limiter();
+
+        let auth_routes = Router::new()
             .route("/api/auth/register", post(register))
             .route("/api/auth/login", post(login))
+            .layer(rate_limiter);
+
+        Router::new()
+            .route("/health", get(health_check))
+            .merge(auth_routes)
             .route("/api/auth/me", get(get_current_user))
             .route("/api/repositories", get(list_repositories))
             .with_state(state)
