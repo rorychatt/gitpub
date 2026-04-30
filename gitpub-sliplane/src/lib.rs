@@ -30,7 +30,11 @@ impl SliplaneClient {
         self
     }
 
-    pub fn with_timeouts(api_url: String, connect_timeout: Duration, request_timeout: Duration) -> Self {
+    pub fn with_timeouts(
+        api_url: String,
+        connect_timeout: Duration,
+        request_timeout: Duration,
+    ) -> Self {
         let client = reqwest::ClientBuilder::new()
             .connect_timeout(connect_timeout)
             .timeout(request_timeout)
