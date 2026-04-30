@@ -77,7 +77,13 @@ fn test_clone_command_parsing() {
 
 #[test]
 fn test_clone_command_with_directory() {
-    let cli = Cli::parse_from(["gitpub", "clone", "https://example.com/repo.git", "-d", "my-dir"]);
+    let cli = Cli::parse_from([
+        "gitpub",
+        "clone",
+        "https://example.com/repo.git",
+        "-d",
+        "my-dir",
+    ]);
 
     match cli.command {
         Commands::Clone { url, directory } => {

@@ -1,4 +1,4 @@
-use gitpub_core::{Repository, User, Database};
+use gitpub_core::{Database, Repository, User};
 
 #[test]
 fn test_repository_creation() {
@@ -48,9 +48,7 @@ async fn test_database_connection() {
 
     if result.is_ok() {
         let db = result.unwrap();
-        let query_result = sqlx::query("SELECT 1")
-            .fetch_one(db.pool())
-            .await;
+        let query_result = sqlx::query("SELECT 1").fetch_one(db.pool()).await;
         assert!(query_result.is_ok());
     }
 }

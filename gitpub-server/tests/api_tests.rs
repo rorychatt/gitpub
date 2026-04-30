@@ -3,11 +3,11 @@ use axum::{
     http::{Request, StatusCode},
     Router,
 };
-use tower::ServiceExt;
 use axum_test::TestServer;
+use tower::ServiceExt;
 
 fn create_test_app() -> Router {
-    use axum::{routing::get, Json, Router, extract::State};
+    use axum::{extract::State, routing::get, Json, Router};
     use serde::Serialize;
     use std::sync::Arc;
 
@@ -30,7 +30,9 @@ fn create_test_app() -> Router {
         "OK"
     }
 
-    async fn list_repositories(State(_state): State<Arc<AppState>>) -> Json<RepositoryListResponse> {
+    async fn list_repositories(
+        State(_state): State<Arc<AppState>>,
+    ) -> Json<RepositoryListResponse> {
         Json(RepositoryListResponse {
             repositories: vec![],
         })

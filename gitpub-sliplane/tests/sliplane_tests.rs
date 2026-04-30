@@ -1,9 +1,7 @@
-use gitpub_sliplane::{
-    SliplaneClient, DeploymentConfig, Environment, DeploymentStatus,
-};
+use gitpub_sliplane::{DeploymentConfig, DeploymentStatus, Environment, SliplaneClient};
 use wiremock::{
-    Mock, MockServer, ResponseTemplate,
     matchers::{method, path},
+    Mock, MockServer, ResponseTemplate,
 };
 
 #[test]
