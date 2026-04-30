@@ -13,9 +13,9 @@ use std::{collections::HashMap, path::PathBuf, sync::Arc};
 use tokio::sync::RwLock;
 
 #[derive(Clone)]
-struct AppState {
-    users: Arc<RwLock<HashMap<String, User>>>,
-    repos_path: PathBuf,
+pub struct AppState {
+    pub users: Arc<RwLock<HashMap<String, User>>>,
+    pub repos_path: PathBuf,
 }
 
 #[tokio::main]
