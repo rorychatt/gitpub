@@ -387,6 +387,9 @@ mod tests {
 
     #[test]
     fn test_jwt_secret_validation() {
+        // Save original value to restore after test
+        let original = std::env::var(JWT_SECRET_ENV).ok();
+
         std::env::remove_var(JWT_SECRET_ENV);
         assert!(matches!(get_jwt_secret(), Err(AuthError::JwtSecretMissing)));
 
@@ -401,6 +404,11 @@ mod tests {
             "this_is_a_valid_secret_that_is_at_least_32_bytes",
         );
         assert!(get_jwt_secret().is_ok());
+
+        // Restore original value
+        if let Some(val) = original {
+            std::env::set_var(JWT_SECRET_ENV, val);
+        }
     }
 
     #[test]
