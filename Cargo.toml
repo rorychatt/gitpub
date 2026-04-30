@@ -18,3 +18,5 @@ git2 = "0.18"
 anyhow = "1"
 tracing = "0.1"
 tracing-subscriber = "0.3"
+chrono = "0.4"
+uuid = { version = "1", features = ["v4", "serde"] }

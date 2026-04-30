@@ -33,15 +33,17 @@ pub struct User {
     pub id: String,
     pub username: String,
     pub email: String,
+    pub password_hash: String,
     pub created_at: i64,
 }
 
 impl User {
-    pub fn new(username: String, email: String) -> Self {
+    pub fn new(username: String, email: String, password_hash: String) -> Self {
         Self {
             id: uuid::Uuid::new_v4().to_string(),
             username,
             email,
+            password_hash,
             created_at: chrono::Utc::now().timestamp(),
         }
     }
@@ -88,9 +90,14 @@ mod tests {
 
     #[test]
     fn test_user_creation() {
-        let user = User::new("testuser".to_string(), "test@example.com".to_string());
+        let user = User::new(
+            "testuser".to_string(),
+            "test@example.com".to_string(),
+            "hash123".to_string(),
+        );
         assert_eq!(user.username, "testuser");
         assert_eq!(user.email, "test@example.com");
+        assert_eq!(user.password_hash, "hash123");
     }
 
     #[tokio::test]
