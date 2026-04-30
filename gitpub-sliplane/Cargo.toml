@@ -13,4 +13,7 @@ tokio = { workspace = true }
 
 [dev-dependencies]
 tokio-test = { workspace = true }
+mockall = { workspace = true }
+rstest = { workspace = true }
+assert_matches = { workspace = true }
 wiremock = { workspace = true }

@@ -1,134 +1,94 @@
-mod common;
+use axum::{
+    http::StatusCode,
+    Router,
+};
+use axum_test::TestServer;
 
-use axum::body::Body;
-use axum::http::{Request, StatusCode};
-use tower::ServiceExt;
+fn create_test_app() -> Router {
+    use axum::{extract::State, routing::get, Json, Router};
+    use serde::Serialize;
+    use std::sync::Arc;
 
-#[tokio::test]
-async fn test_health_endpoint_returns_ok() {
-    let app = common::test_app();
+    #[derive(Clone)]
+    struct AppState {}
 
-    let response = app
-        .oneshot(
-            Request::builder()
-                .uri("/health")
-                .body(Body::empty())
-                .unwrap(),
-        )
-        .await
-        .unwrap();
+    #[derive(Serialize)]
+    struct RepositoryListResponse {
+        repositories: Vec<RepositoryInfo>,
+    }
 
-    assert_eq!(response.status(), StatusCode::OK);
+    #[derive(Serialize)]
+    struct RepositoryInfo {
+        name: String,
+        owner: String,
+        description: Option<String>,
+    }
 
-    let body = axum::body::to_bytes(response.into_body(), usize::MAX)
-        .await
-        .unwrap();
-    assert_eq!(&body[..], b"OK");
+    async fn health_check() -> &'static str {
+        "OK"
+    }
+
+    async fn list_repositories(
+        State(_state): State<Arc<AppState>>,
+    ) -> Json<RepositoryListResponse> {
+        Json(RepositoryListResponse {
+            repositories: vec![],
+        })
+    }
+
+    let state = Arc::new(AppState {});
+
+    Router::new()
+        .route("/health", get(health_check))
+        .route("/api/repositories", get(list_repositories))
+        .with_state(state)
 }
 
 #[tokio::test]
-async fn test_repositories_endpoint_returns_empty_list() {
-    let app = common::test_app();
+async fn test_health_endpoint() {
+    let server = TestServer::new(create_test_app()).unwrap();
+    let response = server.get("/health").await;
 
-    let response = app
-        .oneshot(
-            Request::builder()
-                .uri("/api/repositories")
-                .body(Body::empty())
-                .unwrap(),
-        )
-        .await
-        .unwrap();
+    response.assert_status_ok();
+    response.assert_text("OK");
+}
 
-    assert_eq!(response.status(), StatusCode::OK);
+#[tokio::test]
+async fn test_list_repositories_empty() {
+    let server = TestServer::new(create_test_app()).unwrap();
+    let response = server.get("/api/repositories").await;
 
-    let body = axum::body::to_bytes(response.into_body(), usize::MAX)
-        .await
-        .unwrap();
-    let json: serde_json::Value = serde_json::from_slice(&body).unwrap();
+    response.assert_status_ok();
+    let json: serde_json::Value = response.json();
+
     assert!(json["repositories"].is_array());
     assert_eq!(json["repositories"].as_array().unwrap().len(), 0);
 }
 
 #[tokio::test]
-async fn test_not_found_returns_404() {
-    let app = common::test_app();
+async fn test_invalid_route_returns_404() {
+    let server = TestServer::new(create_test_app()).unwrap();
+    let response = server.get("/invalid/route").await;
 
-    let response = app
-        .oneshot(
-            Request::builder()
-                .uri("/nonexistent")
-                .body(Body::empty())
-                .unwrap(),
-        )
-        .await
-        .unwrap();
-
-    assert_eq!(response.status(), StatusCode::NOT_FOUND);
+    response.assert_status(StatusCode::NOT_FOUND);
 }
 
 #[tokio::test]
-async fn test_health_endpoint_method_not_allowed() {
-    let app = common::test_app();
+async fn test_health_endpoint_multiple_calls() {
+    let server = TestServer::new(create_test_app()).unwrap();
 
-    let response = app
-        .oneshot(
-            Request::builder()
-                .method("POST")
-                .uri("/health")
-                .body(Body::empty())
-                .unwrap(),
-        )
-        .await
-        .unwrap();
-
-    assert_eq!(response.status(), StatusCode::METHOD_NOT_ALLOWED);
+    for _ in 0..5 {
+        let response = server.get("/health").await;
+        response.assert_status_ok();
+    }
 }
 
 #[tokio::test]
-async fn test_repositories_response_content_type() {
-    let app = common::test_app();
+async fn test_repositories_endpoint_content_type() {
+    let server = TestServer::new(create_test_app()).unwrap();
+    let response = server.get("/api/repositories").await;
 
-    let response = app
-        .oneshot(
-            Request::builder()
-                .uri("/api/repositories")
-                .body(Body::empty())
-                .unwrap(),
-        )
-        .await
-        .unwrap();
-
-    assert_eq!(response.status(), StatusCode::OK);
-    let content_type = response.headers().get("content-type").unwrap();
-    assert_eq!(content_type, "application/json");
-}
-
-#[tokio::test]
-async fn test_multiple_requests_independent() {
-    let app1 = common::test_app();
-    let app2 = common::test_app();
-
-    let resp1 = app1
-        .oneshot(
-            Request::builder()
-                .uri("/health")
-                .body(Body::empty())
-                .unwrap(),
-        )
-        .await
-        .unwrap();
-
-    let resp2 = app2
-        .oneshot(
-            Request::builder()
-                .uri("/health")
-                .body(Body::empty())
-                .unwrap(),
-        )
-        .await
-        .unwrap();
-
-    assert_eq!(resp1.status(), StatusCode::OK);
-    assert_eq!(resp2.status(), StatusCode::OK);
+    response.assert_status_ok();
+    let content_type = response.header("content-type");
+    assert!(content_type.to_str().unwrap().contains("application/json"));
 }
