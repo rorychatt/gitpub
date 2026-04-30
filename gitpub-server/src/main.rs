@@ -1,4 +1,5 @@
 mod auth;
+mod rate_limit;
 mod git_http;
 mod routes;
 
@@ -31,10 +32,16 @@ async fn main() -> anyhow::Result<()> {
         repos_path,
     });
 
-    let app = Router::new()
-        .route("/health", get(routes::health::health_check))
+    let rate_limiter = rate_limit::create_auth_rate_limiter();
+
+    let auth_routes = Router::new()
         .route("/api/auth/register", post(routes::auth::register))
         .route("/api/auth/login", post(routes::auth::login))
+        .layer(rate_limiter);
+
+    let app = Router::new()
+        .route("/health", get(routes::health::health_check))
+        .merge(auth_routes)
         .route("/api/auth/me", get(routes::auth::get_current_user))
         .route(
             "/api/repositories",
@@ -77,10 +84,16 @@ mod tests {
             repos_path: PathBuf::from("/tmp/test-repos"),
         });
 
-        Router::new()
-            .route("/health", get(routes::health::health_check))
+        let rate_limiter = rate_limit::create_auth_rate_limiter();
+
+        let auth_routes = Router::new()
             .route("/api/auth/register", post(routes::auth::register))
             .route("/api/auth/login", post(routes::auth::login))
+            .layer(rate_limiter);
+
+        Router::new()
+            .route("/health", get(routes::health::health_check))
+            .merge(auth_routes)
             .route("/api/auth/me", get(routes::auth::get_current_user))
             .route(
                 "/api/repositories",
