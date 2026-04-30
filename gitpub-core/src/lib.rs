@@ -92,4 +92,13 @@ mod tests {
         assert_eq!(user.username, "testuser");
         assert_eq!(user.email, "test@example.com");
     }
+
+    #[tokio::test]
+    async fn test_database_migrations() {
+        // Requires a test database URL in environment
+        if let Ok(db_url) = std::env::var("DATABASE_URL") {
+            let db = Database::new(&db_url).await;
+            assert!(db.is_ok(), "Database migrations should run successfully");
+        }
+    }
 }
