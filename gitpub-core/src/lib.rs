@@ -75,8 +75,17 @@ impl Database {
     }
 
     /// Create a new user
-    pub async fn create_user(&self, username: &str, email: &str, password_hash: &str) -> Result<User> {
-        let user = User::new(username.to_string(), email.to_string(), password_hash.to_string());
+    pub async fn create_user(
+        &self,
+        username: &str,
+        email: &str,
+        password_hash: &str,
+    ) -> Result<User> {
+        let user = User::new(
+            username.to_string(),
+            email.to_string(),
+            password_hash.to_string(),
+        );
 
         sqlx::query!(
             "INSERT INTO users (id, username, email, created_at) VALUES ($1, $2, $3, $4)",
@@ -129,42 +138,36 @@ impl Database {
 
     /// List all users
     pub async fn list_users(&self) -> Result<Vec<User>> {
-        let rows = sqlx::query!(
-            "SELECT id, username, email, created_at FROM users"
-        )
-        .fetch_all(&self.pool)
-        .await?;
+        let rows = sqlx::query!("SELECT id, username, email, created_at FROM users")
+            .fetch_all(&self.pool)
+            .await?;
 
-        Ok(rows.into_iter().map(|r| User {
-            id: r.id,
-            username: r.username,
-            email: r.email,
-            password_hash: String::new(), // Password hash is not stored in DB in current schema
-            created_at: r.created_at,
-        }).collect())
+        Ok(rows
+            .into_iter()
+            .map(|r| User {
+                id: r.id,
+                username: r.username,
+                email: r.email,
+                password_hash: String::new(), // Password hash is not stored in DB in current schema
+                created_at: r.created_at,
+            })
+            .collect())
     }
 
     /// Update user email
     pub async fn update_user_email(&self, id: &str, email: &str) -> Result<()> {
-        sqlx::query!(
-            "UPDATE users SET email = $1 WHERE id = $2",
-            email,
-            id
-        )
-        .execute(&self.pool)
-        .await?;
+        sqlx::query!("UPDATE users SET email = $1 WHERE id = $2", email, id)
+            .execute(&self.pool)
+            .await?;
 
         Ok(())
     }
 
     /// Delete user
     pub async fn delete_user(&self, id: &str) -> Result<()> {
-        sqlx::query!(
-            "DELETE FROM users WHERE id = $1",
-            id
-        )
-        .execute(&self.pool)
-        .await?;
+        sqlx::query!("DELETE FROM users WHERE id = $1", id)
+            .execute(&self.pool)
+            .await?;
 
         Ok(())
     }
@@ -216,7 +219,10 @@ mod tests {
             return; // Skip if no test database
         }
         let db = test_db().await;
-        let user = db.create_user("testuser", "test@example.com", "hash123").await.unwrap();
+        let user = db
+            .create_user("testuser", "test@example.com", "hash123")
+            .await
+            .unwrap();
 
         let fetched = db.get_user(&user.id).await.unwrap();
         assert!(fetched.is_some());
@@ -231,7 +237,9 @@ mod tests {
             return; // Skip if no test database
         }
         let db = test_db().await;
-        db.create_user("findme", "findme@example.com", "hash123").await.unwrap();
+        db.create_user("findme", "findme@example.com", "hash123")
+            .await
+            .unwrap();
 
         let user = db.get_user_by_username("findme").await.unwrap();
         assert!(user.is_some());
@@ -244,9 +252,14 @@ mod tests {
             return; // Skip if no test database
         }
         let db = test_db().await;
-        let user = db.create_user("updateme", "old@example.com", "hash123").await.unwrap();
+        let user = db
+            .create_user("updateme", "old@example.com", "hash123")
+            .await
+            .unwrap();
 
-        db.update_user_email(&user.id, "new@example.com").await.unwrap();
+        db.update_user_email(&user.id, "new@example.com")
+            .await
+            .unwrap();
 
         let updated = db.get_user(&user.id).await.unwrap().unwrap();
         assert_eq!(updated.email, "new@example.com");
@@ -258,7 +271,10 @@ mod tests {
             return; // Skip if no test database
         }
         let db = test_db().await;
-        let user = db.create_user("deleteme", "delete@example.com", "hash123").await.unwrap();
+        let user = db
+            .create_user("deleteme", "delete@example.com", "hash123")
+            .await
+            .unwrap();
 
         db.delete_user(&user.id).await.unwrap();
 

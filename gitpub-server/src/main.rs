@@ -36,7 +36,10 @@ async fn main() -> anyhow::Result<()> {
         .route("/api/auth/me", get(get_current_user))
         .route("/api/repositories", get(list_repositories))
         .route("/api/users", get(list_users).post(create_user))
-        .route("/api/users/:id", get(get_user_by_id).patch(update_user).delete(delete_user))
+        .route(
+            "/api/users/:id",
+            get(get_user_by_id).patch(update_user).delete(delete_user),
+        )
         .with_state(state);
 
     let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await?;
@@ -83,7 +86,9 @@ async fn register(
     }
 
     let password_hash = auth::hash_password(&req.password)?;
-    let user = state.db.create_user(&req.username, &req.email, &password_hash)
+    let user = state
+        .db
+        .create_user(&req.username, &req.email, &password_hash)
         .await
         .map_err(|_| auth::AuthError::DatabaseError)?;
 
@@ -102,7 +107,9 @@ async fn login(
     State(state): State<Arc<AppState>>,
     Json(req): Json<auth::LoginRequest>,
 ) -> Result<Json<auth::LoginResponse>, auth::AuthError> {
-    let user = state.db.get_user_by_username(&req.username)
+    let user = state
+        .db
+        .get_user_by_username(&req.username)
         .await
         .map_err(|_| auth::AuthError::DatabaseError)?
         .ok_or(auth::AuthError::InvalidCredentials)?;
@@ -124,7 +131,9 @@ async fn get_current_user(
     State(state): State<Arc<AppState>>,
     auth: auth::RequireAuth,
 ) -> Result<Json<auth::UserInfo>, auth::AuthError> {
-    let user = state.db.get_user_by_username(&auth.claims.username)
+    let user = state
+        .db
+        .get_user_by_username(&auth.claims.username)
         .await
         .map_err(|_| auth::AuthError::DatabaseError)?
         .ok_or(auth::AuthError::InvalidToken)?;
@@ -142,7 +151,11 @@ async fn create_user(
     State(state): State<Arc<AppState>>,
     Json(payload): Json<CreateUserRequest>,
 ) -> Result<Json<User>, StatusCode> {
-    match state.db.create_user(&payload.username, &payload.email, "").await {
+    match state
+        .db
+        .create_user(&payload.username, &payload.email, "")
+        .await
+    {
         Ok(user) => Ok(Json(user)),
         Err(_) => Err(StatusCode::INTERNAL_SERVER_ERROR),
     }
@@ -218,7 +231,10 @@ mod tests {
             .route("/api/auth/me", get(get_current_user))
             .route("/api/repositories", get(list_repositories))
             .route("/api/users", get(list_users).post(create_user))
-            .route("/api/users/:id", get(get_user_by_id).patch(update_user).delete(delete_user))
+            .route(
+                "/api/users/:id",
+                get(get_user_by_id).patch(update_user).delete(delete_user),
+            )
             .with_state(state)
     }
 
