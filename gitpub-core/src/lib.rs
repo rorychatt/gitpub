@@ -64,6 +64,7 @@ pub struct Database {
 impl Database {
     pub async fn new(database_url: &str) -> Result<Self> {
         let pool = sqlx::PgPool::connect(database_url).await?;
+        sqlx::migrate!("./migrations").run(&pool).await?;
         Ok(Self { pool })
     }
 
