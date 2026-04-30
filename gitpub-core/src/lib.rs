@@ -96,7 +96,7 @@ impl Database {
             .bind(user.created_at)
             .bind(user.email_verified)
             .bind(&user.verification_token)
-            .bind(&user.verification_token_expires_at)
+            .bind(user.verification_token_expires_at)
             .execute(&self.pool)
             .await?;
         Ok(())
@@ -171,7 +171,7 @@ impl Database {
     ) -> Result<()> {
         sqlx::query("UPDATE users SET verification_token = $1, verification_token_expires_at = $2 WHERE id = $3")
             .bind(&token)
-            .bind(&expires_at)
+            .bind(expires_at)
             .bind(user_id)
             .execute(&self.pool)
             .await?;
