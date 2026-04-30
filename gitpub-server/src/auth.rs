@@ -62,6 +62,7 @@ pub struct RegisterRequest {
 }
 
 #[derive(Debug)]
+#[allow(dead_code)]
 pub enum AuthError {
     InvalidCredentials,
     TokenExpired,
