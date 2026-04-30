@@ -1,4 +1,8 @@
-use axum::{extract::State, routing::{get, post}, Json, Router};
+use axum::{
+    extract::State,
+    routing::{get, post},
+    Json, Router,
+};
 use gitpub_core::Database;
 use serde::Serialize;
 use std::{env, sync::Arc};
@@ -16,8 +20,8 @@ async fn main() -> anyhow::Result<()> {
         anyhow::bail!("JWT_SECRET environment variable must be set");
     }
 
-    let database_url = env::var("DATABASE_URL")
-        .unwrap_or_else(|_| "postgres://localhost/gitpub".to_string());
+    let database_url =
+        env::var("DATABASE_URL").unwrap_or_else(|_| "postgres://localhost/gitpub".to_string());
 
     let db = Database::new(&database_url).await?;
     let state = Arc::new(db);

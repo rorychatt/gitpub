@@ -147,7 +147,9 @@ mod tests {
         )
         .expect("Failed to create user");
 
-        let result = user.verify_password(password).expect("Failed to verify password");
+        let result = user
+            .verify_password(password)
+            .expect("Failed to verify password");
         assert!(result);
     }
 

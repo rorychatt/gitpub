@@ -21,8 +21,8 @@ pub struct Claims {
 }
 
 pub fn create_jwt(user_id: &str, username: &str) -> Result<String> {
-    let secret = env::var("JWT_SECRET")
-        .map_err(|_| anyhow!("JWT_SECRET environment variable not set"))?;
+    let secret =
+        env::var("JWT_SECRET").map_err(|_| anyhow!("JWT_SECRET environment variable not set"))?;
 
     let expiration = chrono::Utc::now()
         .checked_add_signed(chrono::Duration::hours(JWT_EXPIRATION_HOURS))
@@ -44,8 +44,8 @@ pub fn create_jwt(user_id: &str, username: &str) -> Result<String> {
 }
 
 pub fn validate_jwt(token: &str) -> Result<Claims> {
-    let secret = env::var("JWT_SECRET")
-        .map_err(|_| anyhow!("JWT_SECRET environment variable not set"))?;
+    let secret =
+        env::var("JWT_SECRET").map_err(|_| anyhow!("JWT_SECRET environment variable not set"))?;
 
     let token_data = decode::<Claims>(
         token,

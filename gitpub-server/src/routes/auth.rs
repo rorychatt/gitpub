@@ -58,15 +58,19 @@ pub async fn register(
         ));
     }
 
-    let user = User::new_with_password(payload.username.clone(), payload.email.clone(), &payload.password)
-        .map_err(|e| {
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                Json(ErrorResponse {
-                    error: format!("Failed to create user: {}", e),
-                }),
-            )
-        })?;
+    let user = User::new_with_password(
+        payload.username.clone(),
+        payload.email.clone(),
+        &payload.password,
+    )
+    .map_err(|e| {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(ErrorResponse {
+                error: format!("Failed to create user: {}", e),
+            }),
+        )
+    })?;
 
     let existing = sqlx::query("SELECT id FROM users WHERE username = $1 OR email = $2")
         .bind(&user.username)
@@ -132,7 +136,7 @@ pub async fn login(
     Json(payload): Json<LoginRequest>,
 ) -> Result<Json<AuthResponse>, (StatusCode, Json<ErrorResponse>)> {
     let user_record = sqlx::query_as::<_, (String, String, String, String, i64)>(
-        "SELECT id, username, email, password_hash, created_at FROM users WHERE username = $1"
+        "SELECT id, username, email, password_hash, created_at FROM users WHERE username = $1",
     )
     .bind(&payload.username)
     .fetch_optional(db.pool())
