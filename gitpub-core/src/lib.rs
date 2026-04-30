@@ -1,4 +1,8 @@
 use anyhow::Result;
+use argon2::{
+    password_hash::{rand_core::OsRng, PasswordHash, PasswordHasher, PasswordVerifier, SaltString},
+    Argon2,
+};
 use serde::{Deserialize, Serialize};
 
 /// Core repository representation
@@ -33,6 +37,8 @@ pub struct User {
     pub id: String,
     pub username: String,
     pub email: String,
+    #[serde(skip_serializing)]
+    pub password_hash: String,
     pub created_at: i64,
 }
 
@@ -42,8 +48,37 @@ impl User {
             id: uuid::Uuid::new_v4().to_string(),
             username,
             email,
+            password_hash: String::new(),
             created_at: chrono::Utc::now().timestamp(),
         }
+    }
+
+    pub fn new_with_password(username: String, email: String, password: &str) -> Result<Self> {
+        let password_hash = Self::hash_password(password)?;
+        Ok(Self {
+            id: uuid::Uuid::new_v4().to_string(),
+            username,
+            email,
+            password_hash,
+            created_at: chrono::Utc::now().timestamp(),
+        })
+    }
+
+    pub fn hash_password(password: &str) -> Result<String> {
+        let salt = SaltString::generate(&mut OsRng);
+        let argon2 = Argon2::default();
+        let hash = argon2
+            .hash_password(password.as_bytes(), &salt)
+            .map_err(|e| anyhow::anyhow!("Failed to hash password: {}", e))?;
+        Ok(hash.to_string())
+    }
+
+    pub fn verify_password(&self, password: &str) -> Result<bool> {
+        let parsed_hash = PasswordHash::new(&self.password_hash)
+            .map_err(|e| anyhow::anyhow!("Failed to parse password hash: {}", e))?;
+        Ok(Argon2::default()
+            .verify_password(password.as_bytes(), &parsed_hash)
+            .is_ok())
     }
 }
 
@@ -90,5 +125,45 @@ mod tests {
         let user = User::new("testuser".to_string(), "test@example.com".to_string());
         assert_eq!(user.username, "testuser");
         assert_eq!(user.email, "test@example.com");
+    }
+
+    #[test]
+    fn test_hash_password_creates_valid_hash() {
+        let password = "test_password_123";
+        let hash = User::hash_password(password).expect("Failed to hash password");
+
+        assert_ne!(hash, password);
+        assert!(!hash.is_empty());
+        assert!(hash.starts_with("$argon2"));
+    }
+
+    #[test]
+    fn test_verify_password_correct() {
+        let password = "correct_password";
+        let user = User::new_with_password(
+            "testuser".to_string(),
+            "test@example.com".to_string(),
+            password,
+        )
+        .expect("Failed to create user");
+
+        let result = user.verify_password(password).expect("Failed to verify password");
+        assert!(result);
+    }
+
+    #[test]
+    fn test_verify_password_incorrect() {
+        let password = "correct_password";
+        let user = User::new_with_password(
+            "testuser".to_string(),
+            "test@example.com".to_string(),
+            password,
+        )
+        .expect("Failed to create user");
+
+        let result = user
+            .verify_password("wrong_password")
+            .expect("Failed to verify password");
+        assert!(!result);
     }
 }
