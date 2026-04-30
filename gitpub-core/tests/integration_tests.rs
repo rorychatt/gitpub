@@ -22,7 +22,7 @@ fn test_user_creation() {
     let user = User::new(
         "testuser".to_string(),
         "test@example.com".to_string(),
-        "hash123".to_string(),
+        "hashed_password".to_string(),
     );
     assert_eq!(user.username, "testuser");
     assert_eq!(user.email, "test@example.com");
@@ -41,12 +41,12 @@ fn test_multiple_users_have_unique_ids() {
     let user1 = User::new(
         "user1".to_string(),
         "user1@example.com".to_string(),
-        "hash1".to_string(),
+        "password1".to_string(),
     );
     let user2 = User::new(
         "user2".to_string(),
         "user2@example.com".to_string(),
-        "hash2".to_string(),
+        "password2".to_string(),
     );
     assert_ne!(user1.id, user2.id);
 }

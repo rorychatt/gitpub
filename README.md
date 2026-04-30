@@ -27,6 +27,21 @@ The project is organized as a Rust workspace with four main components:
 - PostgreSQL 14 or higher
 - Git 2.30 or higher
 
+### Environment Variables
+
+The following environment variables are required to run gitpub-server:
+
+- **`DATABASE_URL`** (required): PostgreSQL connection string
+  - Example: `postgresql://user:password@localhost/gitpub`
+  
+- **`JWT_SECRET`** (required): Secret key for JWT token signing
+  - Must be at least 32 bytes long
+  - Generate with: `openssl rand -base64 32`
+  - Never commit this value to source control
+  - Use a different secret for each environment (development, staging, production)
+
+See `.env.example` for a template.
+
 ### Installation
 
 ```bash
@@ -44,8 +59,9 @@ cargo test --workspace
 ### Running the Server
 
 ```bash
-# Set up database connection
+# Set up environment variables
 export DATABASE_URL="postgresql://user:password@localhost/gitpub"
+export JWT_SECRET="$(openssl rand -base64 32)"
 
 # Start the server
 cargo run --package gitpub-server
