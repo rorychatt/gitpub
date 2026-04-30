@@ -4,6 +4,7 @@ use clap::{Parser, Subcommand};
 #[derive(Parser)]
 #[command(name = "gitpub")]
 #[command(about = "A CLI for interacting with gitpub repositories", long_about = None)]
+#[command(version)]
 struct Cli {
     #[command(subcommand)]
     command: Commands,
@@ -82,6 +83,14 @@ mod tests {
         // Basic test that CLI parsing works
         let result = std::panic::catch_unwind(|| {
             Cli::parse_from(["gitpub", "init", "test-repo"]);
+        });
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_version_flag() {
+        let result = std::panic::catch_unwind(|| {
+            Cli::parse_from(["gitpub", "--version"]);
         });
         assert!(result.is_ok());
     }
