@@ -56,18 +56,17 @@ cargo test test_repository_creation
 
 ## Database Setup for Integration Tests
 
-The integration tests in `gitpub-core` require a PostgreSQL database.
+Database tests use testcontainers-rs to automatically provision isolated PostgreSQL instances. No manual setup required.
 
-### Local database setup
-
-If you want to run database tests locally, set the `DATABASE_URL` environment variable:
+**Prerequisites:**
+- Docker must be running on your machine
+- No need to set `DATABASE_URL` - testcontainers handles this automatically
 
 ```bash
-export DATABASE_URL=postgresql://postgres:postgres@localhost/gitpub_test
 cargo test -p gitpub-core
 ```
 
-The database connection test will be skipped if the database is not available.
+Each test gets a fresh, isolated PostgreSQL container that is automatically cleaned up after the test completes.
 
 ## Test Organization
 
@@ -228,9 +227,9 @@ open tarpaulin-report.html
 
 ### Database connection failures
 
-- Ensure PostgreSQL is running
-- Check `DATABASE_URL` environment variable
-- Verify database credentials
+- Ensure Docker is running (required for testcontainers)
+- Check Docker daemon is accessible
+- Verify Docker has permission to pull postgres:16 image
 
 ### Slow tests
 

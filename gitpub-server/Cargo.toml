@@ -28,6 +28,7 @@ tower_governor = "0.4.2"
 governor = "0.6.3"
 axum-extra = { version = "0.9.4", features = ["typed-header"] }
 chrono = { workspace = true }
+uuid = { workspace = true }
 base64 = "0.22"
 
 [dev-dependencies]

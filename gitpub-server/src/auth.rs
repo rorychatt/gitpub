@@ -61,6 +61,21 @@ pub struct RegisterRequest {
     pub password: String,
 }
 
+#[derive(Debug, Serialize, Deserialize)]
+pub struct RegisterResponse {
+    pub message: String,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct VerifyEmailRequest {
+    pub token: String,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct ResendVerificationRequest {
+    pub email: String,
+}
+
 #[derive(Debug)]
 #[allow(dead_code)]
 pub enum AuthError {
@@ -72,8 +87,9 @@ pub enum AuthError {
     HashingError,
     JwtSecretMissing,
     JwtSecretTooShort,
-    InternalError,
-    Forbidden,
+    DatabaseError,
+    InvalidVerificationToken,
+    VerificationTokenExpired,
 }
 
 impl fmt::Display for AuthError {
@@ -89,8 +105,9 @@ impl fmt::Display for AuthError {
             AuthError::JwtSecretTooShort => {
                 write!(f, "JWT_SECRET must be at least 32 bytes")
             }
-            AuthError::InternalError => write!(f, "Internal server error"),
-            AuthError::Forbidden => write!(f, "Forbidden"),
+            AuthError::DatabaseError => write!(f, "Database error"),
+            AuthError::InvalidVerificationToken => write!(f, "Invalid verification token"),
+            AuthError::VerificationTokenExpired => write!(f, "Verification token expired"),
         }
     }
 }
@@ -117,11 +134,12 @@ impl IntoResponse for AuthError {
                 StatusCode::INTERNAL_SERVER_ERROR,
                 "Configuration error".to_string(),
             ),
-            AuthError::InternalError => (
+            AuthError::DatabaseError => (
                 StatusCode::INTERNAL_SERVER_ERROR,
                 "Internal error".to_string(),
             ),
-            AuthError::Forbidden => (StatusCode::FORBIDDEN, self.to_string()),
+            AuthError::InvalidVerificationToken => (StatusCode::BAD_REQUEST, self.to_string()),
+            AuthError::VerificationTokenExpired => (StatusCode::BAD_REQUEST, self.to_string()),
         };
 
         (status, Json(serde_json::json!({ "error": message }))).into_response()

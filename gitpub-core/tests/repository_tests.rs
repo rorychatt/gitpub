@@ -66,7 +66,7 @@ fn test_user_serialization_roundtrip() {
 
 #[test]
 fn test_commit_creation() {
-    let commit = common::test_commit("abc123", "Initial commit");
+    let commit = common::test_commit("abc123", "Initial commit", "repo123");
     assert_eq!(commit.sha, "abc123");
     assert_eq!(commit.message, "Initial commit");
     assert_eq!(commit.author, "test-author");
@@ -75,7 +75,7 @@ fn test_commit_creation() {
 
 #[test]
 fn test_commit_serialization_roundtrip() {
-    let commit = common::test_commit("def456", "Add feature");
+    let commit = common::test_commit("def456", "Add feature", "repo456");
     let json = serde_json::to_string(&commit).unwrap();
     let deserialized: gitpub_core::Commit = serde_json::from_str(&json).unwrap();
     assert_eq!(commit, deserialized);
