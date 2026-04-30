@@ -656,7 +656,11 @@ mod tests {
             let user = User::new(
                 format!("user{}", i),
                 format!("user{}@example.com", i),
+<<<<<<< HEAD
                 format!("hash{}", i),
+=======
+                "hash".to_string(),
+>>>>>>> origin/main
             );
             db.insert_user(&user).await.unwrap();
         }
@@ -678,12 +682,20 @@ mod tests {
         let user1 = User::new(
             "owner1".to_string(),
             "owner1@example.com".to_string(),
+<<<<<<< HEAD
             "hash1".to_string(),
+=======
+            "hash".to_string(),
+>>>>>>> origin/main
         );
         let user2 = User::new(
             "owner2".to_string(),
             "owner2@example.com".to_string(),
+<<<<<<< HEAD
             "hash2".to_string(),
+=======
+            "hash".to_string(),
+>>>>>>> origin/main
         );
         db.insert_user(&user1).await.unwrap();
         db.insert_user(&user2).await.unwrap();
