@@ -71,6 +71,7 @@ pub enum AuthError {
     HashingError,
     JwtSecretMissing,
     JwtSecretTooShort,
+    DatabaseError,
 }
 
 impl fmt::Display for AuthError {
@@ -86,6 +87,7 @@ impl fmt::Display for AuthError {
             AuthError::JwtSecretTooShort => {
                 write!(f, "JWT_SECRET must be at least 32 bytes")
             }
+            AuthError::DatabaseError => write!(f, "Database error"),
         }
     }
 }
@@ -111,6 +113,10 @@ impl IntoResponse for AuthError {
             AuthError::JwtSecretTooShort => (
                 StatusCode::INTERNAL_SERVER_ERROR,
                 "Configuration error".to_string(),
+            ),
+            AuthError::DatabaseError => (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "Internal error".to_string(),
             ),
         };
 
