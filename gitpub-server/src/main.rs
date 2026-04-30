@@ -1,6 +1,11 @@
 mod auth;
 
-use axum::{extract::State, http::StatusCode, routing::{get, post}, Json, Router};
+use axum::{
+    extract::State,
+    http::StatusCode,
+    routing::{get, post},
+    Json, Router,
+};
 use gitpub_core::User;
 use serde::Serialize;
 use std::{collections::HashMap, sync::Arc};
@@ -16,8 +21,7 @@ struct AppState {
 async fn main() -> anyhow::Result<()> {
     tracing_subscriber::fmt::init();
 
-    let jwt_secret = auth::get_jwt_secret()
-        .expect("JWT_SECRET must be set and at least 32 bytes");
+    let jwt_secret = auth::get_jwt_secret().expect("JWT_SECRET must be set and at least 32 bytes");
 
     let state = Arc::new(AppState {
         users: Arc::new(RwLock::new(HashMap::new())),
@@ -135,7 +139,10 @@ mod tests {
     use tower::ServiceExt;
 
     fn create_test_app() -> Router {
-        std::env::set_var("JWT_SECRET", "test_secret_key_that_is_at_least_32_bytes_long");
+        std::env::set_var(
+            "JWT_SECRET",
+            "test_secret_key_that_is_at_least_32_bytes_long",
+        );
 
         let state = Arc::new(AppState {
             users: Arc::new(RwLock::new(HashMap::new())),

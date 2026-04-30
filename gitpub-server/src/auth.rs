@@ -100,9 +100,18 @@ impl IntoResponse for AuthError {
             AuthError::InvalidToken => (StatusCode::UNAUTHORIZED, self.to_string()),
             AuthError::MissingToken => (StatusCode::UNAUTHORIZED, self.to_string()),
             AuthError::UserAlreadyExists => (StatusCode::CONFLICT, self.to_string()),
-            AuthError::HashingError => (StatusCode::INTERNAL_SERVER_ERROR, "Internal error".to_string()),
-            AuthError::JwtSecretMissing => (StatusCode::INTERNAL_SERVER_ERROR, "Configuration error".to_string()),
-            AuthError::JwtSecretTooShort => (StatusCode::INTERNAL_SERVER_ERROR, "Configuration error".to_string()),
+            AuthError::HashingError => (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "Internal error".to_string(),
+            ),
+            AuthError::JwtSecretMissing => (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "Configuration error".to_string(),
+            ),
+            AuthError::JwtSecretTooShort => (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "Configuration error".to_string(),
+            ),
         };
 
         (status, Json(serde_json::json!({ "error": message }))).into_response()
@@ -220,7 +229,10 @@ mod tests {
 
     #[test]
     fn test_generate_jwt_creates_valid_token() {
-        std::env::set_var(JWT_SECRET_ENV, "test_secret_key_that_is_at_least_32_bytes_long");
+        std::env::set_var(
+            JWT_SECRET_ENV,
+            "test_secret_key_that_is_at_least_32_bytes_long",
+        );
 
         let user = User::new(
             "testuser".to_string(),
@@ -235,7 +247,10 @@ mod tests {
 
     #[test]
     fn test_validate_jwt_accepts_valid_token() {
-        std::env::set_var(JWT_SECRET_ENV, "test_secret_key_that_is_at_least_32_bytes_long");
+        std::env::set_var(
+            JWT_SECRET_ENV,
+            "test_secret_key_that_is_at_least_32_bytes_long",
+        );
 
         let user = User::new(
             "testuser".to_string(),
@@ -252,7 +267,10 @@ mod tests {
 
     #[test]
     fn test_validate_jwt_rejects_invalid_token() {
-        std::env::set_var(JWT_SECRET_ENV, "test_secret_key_that_is_at_least_32_bytes_long");
+        std::env::set_var(
+            JWT_SECRET_ENV,
+            "test_secret_key_that_is_at_least_32_bytes_long",
+        );
 
         let result = validate_jwt("invalid.token.here");
         assert!(result.is_err());
@@ -264,9 +282,15 @@ mod tests {
         assert!(matches!(get_jwt_secret(), Err(AuthError::JwtSecretMissing)));
 
         std::env::set_var(JWT_SECRET_ENV, "short");
-        assert!(matches!(get_jwt_secret(), Err(AuthError::JwtSecretTooShort)));
+        assert!(matches!(
+            get_jwt_secret(),
+            Err(AuthError::JwtSecretTooShort)
+        ));
 
-        std::env::set_var(JWT_SECRET_ENV, "this_is_a_valid_secret_that_is_at_least_32_bytes");
+        std::env::set_var(
+            JWT_SECRET_ENV,
+            "this_is_a_valid_secret_that_is_at_least_32_bytes",
+        );
         assert!(get_jwt_secret().is_ok());
     }
 }

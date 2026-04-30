@@ -89,7 +89,11 @@ mod tests {
 
     #[test]
     fn test_user_creation() {
-        let user = User::new("testuser".to_string(), "test@example.com".to_string(), "hash123".to_string());
+        let user = User::new(
+            "testuser".to_string(),
+            "test@example.com".to_string(),
+            "hash123".to_string(),
+        );
         assert_eq!(user.username, "testuser");
         assert_eq!(user.email, "test@example.com");
         assert_eq!(user.password_hash, "hash123");
