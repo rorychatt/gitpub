@@ -1,7 +1,7 @@
 use axum::{
     extract::State,
     http::StatusCode,
-    routing::{get, post},
+    routing::post,
     Json, Router,
 };
 use axum_test::TestServer;
@@ -100,6 +100,7 @@ async fn test_repositories_endpoint_content_type() {
 
 // Include auth module from main.rs - using path attribute to avoid module conflicts
 #[path = "../src/auth.rs"]
+#[allow(dead_code)]
 mod auth;
 
 fn create_auth_test_app() -> Router {
