@@ -14,18 +14,16 @@ use tokio::sync::RwLock;
 #[derive(Clone)]
 struct AppState {
     users: Arc<RwLock<HashMap<String, User>>>,
-    jwt_secret: String,
 }
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     tracing_subscriber::fmt::init();
 
-    let jwt_secret = auth::get_jwt_secret().expect("JWT_SECRET must be set and at least 32 bytes");
+    auth::get_jwt_secret().expect("JWT_SECRET must be set and at least 32 bytes");
 
     let state = Arc::new(AppState {
         users: Arc::new(RwLock::new(HashMap::new())),
-        jwt_secret,
     });
 
     let app = Router::new()
@@ -146,7 +144,6 @@ mod tests {
 
         let state = Arc::new(AppState {
             users: Arc::new(RwLock::new(HashMap::new())),
-            jwt_secret: "test_secret_key_that_is_at_least_32_bytes_long".to_string(),
         });
 
         Router::new()
