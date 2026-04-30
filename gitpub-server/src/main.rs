@@ -1,19 +1,17 @@
 mod auth;
+mod routes;
 
 use axum::{
-    extract::State,
-    http::StatusCode,
     routing::{get, post},
-    Json, Router,
+    Router,
 };
 use gitpub_core::User;
-use serde::Serialize;
 use std::{collections::HashMap, sync::Arc};
 use tokio::sync::RwLock;
 
 #[derive(Clone)]
-struct AppState {
-    users: Arc<RwLock<HashMap<String, User>>>,
+pub struct AppState {
+    pub users: Arc<RwLock<HashMap<String, User>>>,
 }
 
 #[tokio::main]
@@ -27,11 +25,11 @@ async fn main() -> anyhow::Result<()> {
     });
 
     let app = Router::new()
-        .route("/health", get(health_check))
-        .route("/api/auth/register", post(register))
-        .route("/api/auth/login", post(login))
-        .route("/api/auth/me", get(get_current_user))
-        .route("/api/repositories", get(list_repositories))
+        .route("/health", get(routes::health::health_check))
+        .route("/api/auth/register", post(routes::auth::register))
+        .route("/api/auth/login", post(routes::auth::login))
+        .route("/api/auth/me", get(routes::auth::get_current_user))
+        .route("/api/repositories", get(routes::repositories::list_repositories))
         .with_state(state);
 
     let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await?;
@@ -40,93 +38,6 @@ async fn main() -> anyhow::Result<()> {
     axum::serve(listener, app).await?;
 
     Ok(())
-}
-
-async fn health_check() -> &'static str {
-    "OK"
-}
-
-#[derive(Serialize)]
-struct RepositoryListResponse {
-    repositories: Vec<RepositoryInfo>,
-}
-
-#[derive(Serialize)]
-struct RepositoryInfo {
-    name: String,
-    owner: String,
-    description: Option<String>,
-}
-
-async fn list_repositories(
-    State(_state): State<Arc<AppState>>,
-    auth: auth::RequireAuth,
-) -> Json<RepositoryListResponse> {
-    tracing::info!("Listing repositories for user: {}", auth.claims.username);
-    Json(RepositoryListResponse {
-        repositories: vec![],
-    })
-}
-
-async fn register(
-    State(state): State<Arc<AppState>>,
-    Json(req): Json<auth::RegisterRequest>,
-) -> Result<(StatusCode, Json<auth::LoginResponse>), auth::AuthError> {
-    let users = state.users.read().await;
-    if users.contains_key(&req.username) {
-        return Err(auth::AuthError::UserAlreadyExists);
-    }
-    drop(users);
-
-    let password_hash = auth::hash_password(&req.password)?;
-    let user = User::new(req.username.clone(), req.email.clone(), password_hash);
-
-    let token = auth::generate_jwt(&user)?;
-
-    let mut users = state.users.write().await;
-    users.insert(req.username.clone(), user.clone());
-
-    Ok((
-        StatusCode::CREATED,
-        Json(auth::LoginResponse {
-            token,
-            user: user.into(),
-        }),
-    ))
-}
-
-async fn login(
-    State(state): State<Arc<AppState>>,
-    Json(req): Json<auth::LoginRequest>,
-) -> Result<Json<auth::LoginResponse>, auth::AuthError> {
-    let users = state.users.read().await;
-    let user = users
-        .get(&req.username)
-        .ok_or(auth::AuthError::InvalidCredentials)?;
-
-    let is_valid = auth::verify_password(&req.password, &user.password_hash)?;
-    if !is_valid {
-        return Err(auth::AuthError::InvalidCredentials);
-    }
-
-    let token = auth::generate_jwt(user)?;
-
-    Ok(Json(auth::LoginResponse {
-        token,
-        user: user.clone().into(),
-    }))
-}
-
-async fn get_current_user(
-    State(state): State<Arc<AppState>>,
-    auth: auth::RequireAuth,
-) -> Result<Json<auth::UserInfo>, auth::AuthError> {
-    let users = state.users.read().await;
-    let user = users
-        .get(&auth.claims.username)
-        .ok_or(auth::AuthError::InvalidToken)?;
-
-    Ok(Json(user.clone().into()))
 }
 
 #[cfg(test)]
@@ -147,17 +58,17 @@ mod tests {
         });
 
         Router::new()
-            .route("/health", get(health_check))
-            .route("/api/auth/register", post(register))
-            .route("/api/auth/login", post(login))
-            .route("/api/auth/me", get(get_current_user))
-            .route("/api/repositories", get(list_repositories))
+            .route("/health", get(routes::health::health_check))
+            .route("/api/auth/register", post(routes::auth::register))
+            .route("/api/auth/login", post(routes::auth::login))
+            .route("/api/auth/me", get(routes::auth::get_current_user))
+            .route("/api/repositories", get(routes::repositories::list_repositories))
             .with_state(state)
     }
 
     #[tokio::test]
     async fn test_health_check() {
-        let response = health_check().await;
+        let response = routes::health::health_check().await;
         assert_eq!(response, "OK");
     }
 
