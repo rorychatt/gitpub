@@ -16,7 +16,6 @@ use std::fmt;
 
 const JWT_SECRET_ENV: &str = "JWT_SECRET";
 const TOKEN_EXPIRATION_HOURS: i64 = 24;
-const BCRYPT_COST: u32 = 12;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Claims {
@@ -118,14 +117,6 @@ impl IntoResponse for AuthError {
     }
 }
 
-pub fn hash_password(password: &str) -> Result<String, AuthError> {
-    bcrypt::hash(password, BCRYPT_COST).map_err(|_| AuthError::HashingError)
-}
-
-pub fn verify_password(password: &str, hash: &str) -> Result<bool, AuthError> {
-    bcrypt::verify(password, hash).map_err(|_| AuthError::HashingError)
-}
-
 pub fn get_jwt_secret() -> Result<String, AuthError> {
     let secret = std::env::var(JWT_SECRET_ENV).map_err(|_| AuthError::JwtSecretMissing)?;
 
@@ -201,31 +192,6 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    #[test]
-    fn test_hash_password_generates_valid_bcrypt() {
-        let password = "test_password123";
-        let hash = hash_password(password).expect("hashing should succeed");
-        assert!(hash.starts_with("$2b$") || hash.starts_with("$2a$"));
-        assert!(hash.len() > 50);
-    }
-
-    #[test]
-    fn test_verify_password_accepts_correct_password() {
-        let password = "test_password123";
-        let hash = hash_password(password).expect("hashing should succeed");
-        let result = verify_password(password, &hash).expect("verification should succeed");
-        assert!(result);
-    }
-
-    #[test]
-    fn test_verify_password_rejects_wrong_password() {
-        let password = "test_password123";
-        let wrong_password = "wrong_password";
-        let hash = hash_password(password).expect("hashing should succeed");
-        let result = verify_password(wrong_password, &hash).expect("verification should succeed");
-        assert!(!result);
-    }
 
     #[test]
     fn test_generate_jwt_creates_valid_token() {
